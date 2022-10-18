@@ -1,25 +1,35 @@
 import logo from './logo.svg';
 import './App.css';
+import {useContext} from "react";
+import {AppContext} from "./context/contex";
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
+import {Nav} from "react-bootstrap";
+import TabManual from "./components/tabManual/TabManual";
+import TabMechanical from "./components/TabMechanical";
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    const context = useContext(AppContext);
+    return (
+        <div className="App">
+            <Nav variant="tabs" fill
+                 defaultActiveKey={context.app.tab}
+                 onSelect={(selectedKey) => context.setApp({tab: selectedKey})}
+            >
+                <Nav.Item>
+                    <Nav.Link eventKey="MANUAL_CONTROLLER">Manual controller</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                    <Nav.Link eventKey="MECHANICAL_CONTROLLER">Mechanical controller</Nav.Link>
+                </Nav.Item>
+            </Nav>
+            {context.app.tab === "MANUAL_CONTROLLER" ?
+                <TabManual/>
+                :
+                <TabMechanical/>
+            }
+        </div>
+    );
 }
 
 export default App;
