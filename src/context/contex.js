@@ -29,6 +29,8 @@ export const ContextWrapper = (props) => {
         valve_out_pos: 0,
     })
 
+    const [tankLevel, setTankLevel] = useState(0);
+
 
     //Initialize new game
     // const apiGameStart = useCallback(() => {
@@ -47,7 +49,8 @@ export const ContextWrapper = (props) => {
         <AppContext.Provider value={{
             app, setApp,
             parameters, setParameters,
-            variables, setVariables
+            variables, setVariables,
+            tankLevel, setTankLevel
         }}>
             {props.children}
         </AppContext.Provider>

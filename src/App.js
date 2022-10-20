@@ -1,6 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
-import {useContext} from "react";
+import {useContext, useEffect} from "react";
 import {AppContext} from "./context/contex";
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
@@ -10,12 +10,15 @@ import TabMechanical from "./components/TabMechanical";
 
 function App() {
     const context = useContext(AppContext);
+
+
+
+
     return (
         <div className="App">
             <Nav variant="tabs" fill
                  defaultActiveKey={context.app.tab}
-                 onSelect={(selectedKey) => context.setApp({tab: selectedKey})}
-            >
+                 onSelect={(selectedKey) => context.setApp({tab: selectedKey})}>
                 <Nav.Item>
                     <Nav.Link eventKey="MANUAL_CONTROLLER">Manual controller</Nav.Link>
                 </Nav.Item>
