@@ -3,69 +3,33 @@ import {AppContext} from "../context/contex";
 
 
 const FluidTank = (props) => {
-    //Context
-    const context = useContext(AppContext);
     //Props
-    //Width of tank [m]
-    const width = 10;
-    //Height of tank [m]
-    const height = 1;
-    //Depth of tank [m]
-    const depth = 1;
-    //Max volume of tank [m³]
-    const volumeMax = width * depth * height;
-    //Max level of tank [m]
-    const levelMax = height;
     //Max level px
     const levelMaxPx = 350;
     //Max flow animation width px
     const flowMaxPx = 43;
-    //Max flow
-    const flowMax = 1;
     //Window height
     const bottomLevelPx = 690;
 
     //Variables
-    //Flow [m³/s]
-    const [flow, setFlow] = useState(props.flow);
+    //Flow [px]
+    let flowPx = props.flow / 100.0 * flowMaxPx;
+    //Check if flow is negative and set flow to 0
+    if (flowPx < 0) flowPx = 0;
+    //Check if flow is bigger than max flow and set flow to max flow
+    if (flowPx > flowMaxPx) flowPx = flowMaxPx;
 
-    //Current amount of fluid [m³]
-    const [fluidAmount, setFluidAmount] = useState(0);
-    //Level in px
-    const [levelPx, setLevelPx] = useState(0);
-    //Flow [m³/s]
-    const [flowPx, setFlowPx] = useState(0);
 
-    const [overflow, setOverflow] = useState('hidden');
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-
-            let amount = fluidAmount + flow * 0.01;
-            setOverflow('hidden');
-            //console.log("FluidTank: ",amount, " m³ ",flow, " m³/s");
-            if (amount > volumeMax) {
-                setOverflow('visible');
-                return;
-            }
-            if (amount < 0) {
-                return;
-            }
-            setFluidAmount(amount)
-            context.setTankLevel(fluidAmount / (width * depth));
-            setLevelPx(context.tankLevel / levelMax * levelMaxPx)
-
-        }, 10);
-
-        return () => clearInterval(interval);
-    }, [fluidAmount]);
-
-    useEffect(() => {
-        console.log("Flow changed: ", flow);
-        setFlowPx(flow / flowMax * flowMaxPx);
-
-    }, [flow])
-
+    //Level [px]
+    let levelPx = props.level / 100.0 * levelMaxPx;
+    //Check if level is negative and set level to 0
+    if (levelPx < 0) levelPx = 0;
+    //Check if level is bigger than max level and set level to max level
+    let overflow = false;
+    if (levelPx > levelMaxPx) {
+        levelPx = levelMaxPx;
+        overflow = true;
+    }
 
     return (
         <div>

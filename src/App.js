@@ -7,6 +7,8 @@ import Tabs from 'react-bootstrap/Tabs';
 import {Nav} from "react-bootstrap";
 import TabManual from "./components/tabManual/TabManual";
 import TabMechanical from "./components/TabMechanical";
+import "bootstrap/dist/css/bootstrap.css";
+import "bootstrap-slider/dist/css/bootstrap-slider.css"
 
 function App() {
     const context = useContext(AppContext);
