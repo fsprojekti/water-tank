@@ -3,6 +3,8 @@ import {AppContext} from "../context/contex";
 
 
 const FluidTank = (props) => {
+    //Context
+    const context = useContext(AppContext);
     //Props
     //Width of tank [m]
     const width = 10;
@@ -26,8 +28,7 @@ const FluidTank = (props) => {
     //Variables
     //Flow [m³/s]
     const [flow, setFlow] = useState(props.flow);
-    //Level [% 0...100] of max level
-    const [level, setLevel] = useState(0);
+
     //Current amount of fluid [m³]
     const [fluidAmount, setFluidAmount] = useState(0);
     //Level in px
@@ -36,6 +37,7 @@ const FluidTank = (props) => {
     const [flowPx, setFlowPx] = useState(0);
 
     const [overflow, setOverflow] = useState('hidden');
+
     useEffect(() => {
         const interval = setInterval(() => {
 
@@ -50,8 +52,8 @@ const FluidTank = (props) => {
                 return;
             }
             setFluidAmount(amount)
-            setLevel(fluidAmount / (width * depth));
-            setLevelPx(level / levelMax * levelMaxPx)
+            context.setTankLevel(fluidAmount / (width * depth));
+            setLevelPx(context.tankLevel / levelMax * levelMaxPx)
 
         }, 10);
 

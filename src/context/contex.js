@@ -21,8 +21,6 @@ export const ContextWrapper = (props) => {
 
     //Variables
     const [variables, setVariables] = useState({
-        //Tank variables
-        tank_level: 0,
         //Water intake [m³/s]
         flow_in: 0,
         //Valve out [0...100%]
