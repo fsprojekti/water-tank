@@ -9,68 +9,57 @@ export const ContextWrapper = (props) => {
         tab: "MANUAL_CONTROLLER"
     })
 
-    //Parameters
-    const [parameters, setParameters] = useState({
-        //Tank parameters [m]
-        tank_height: 1,
-        //Tank area [m^2]
-        tank_area: 0.1,
-        //Water intake [m³/s]
-        flow_max: 0.0025,
-        //Valve output constant
-        valve_out_k: 885.89,
-        //Simulation step [s]
-        simulation_step: 0.01,
-        //Evaluation time for control system [s]
-        measureTime: 60,
-        //Evaluation reference height   [m]
-        referenceHeight: 0.5,
+    //Manual controller
+    const [manualController, setManualController] = useState({
+        //Parameters
+        parameters: {
+            //Tank parameters [m]
+            tank_height: 1,
+            //Tank area [m^2]
+            tank_area: 0.1,
+            //Water intake [m³/s]
+            flow_max: 0.0025,
+            //Valve output constant
+            valve_out_k: 885.89,
+            //Simulation step [s]
+            simulation_step: 0.01,
+            //Evaluation time for control system [s]
+            measureTime: 60,
+            //Evaluation reference height   [m]
+            referenceHeight: 0.5,
+            //Valve intake max flow [m³/s]
+            tankFlowInpMax: 0.0025,
 
+        },
     })
-    const [time, setTime] = useState(0);
-    const [tankLevel, setTankLevel] = useState(0.0);
-    const [tankFlowInpMax, setTankFlowInpMax] = useState(0.0025);
-    const [tankFlowInp, setTankFlowInp] = useState(0);
-    const [valveInpPos, setValveInpPos] = useState(0);
-    const [tankFlowOut, setTankFlowOut] = useState(0);
-    const [valveOutPos, setValveOutPos] = useState(0);
 
-    const [evaluateError, setEvaluateError] = useState(0.0);
-    const [evaluateTime, setEvaluateTime] = useState(0.0);
-    const [evaluateStart, setEvaluateStart] = useState(false);
-
+    const [manual_time, set_manual_time] = useState(0);
+    const [manual_tankLevel, set_manual_tankLevel] = useState(0);
+    const [manual_tankFlowInp, set_manual_tankFlowInp] = useState(0);
+    const [manual_valveInpPos, set_manual_valveInpPos] = useState(0);
+    const [manual_tankFlowOut, set_manual_tankFlowOut] = useState(0);
+    const [manual_valveOutPos, set_manual_valveOutPos] = useState(0);
+    const [manual_evaluateStart, set_manual_evaluateStart] = useState(false);
+    const [manual_evaluateTime, set_manual_evaluateTime] = useState(0);
+    const [manual_evaluateError, set_manual_evaluateError] = useState(0);
 
 
 
 
-
-    //Initialize new game
-    // const apiGameStart = useCallback(() => {
-    //     return new Promise(async (resolve, reject) => {
-    //         try {
-    //             let data = await axios.get('game/start');
-    //             resolve();
-    //         } catch (e) {
-    //             console.log(e);
-    //             reject(e);
-    //         }
-    //     })
-    // }, [])
 
     return (
         <AppContext.Provider value={{
             app, setApp,
-            parameters, setParameters,
-            tankLevel, setTankLevel,
-            valveInpPos, setValveInpPos,
-            tankFlowInpMax, setTankFlowInpMax,
-            tankFlowInp, setTankFlowInp,
-            valveOutPos, setValveOutPos,
-            tankFlowOut, setTankFlowOut,
-            evaluateTime, setEvaluateTime,
-            evaluateError, setEvaluateError,
-            evaluateStart, setEvaluateStart,
-            time, setTime
+            manualController, setManualController,
+            manual_time, set_manual_time,
+            manual_tankLevel, set_manual_tankLevel,
+            manual_tankFlowInp, set_manual_tankFlowInp,
+            manual_valveInpPos, set_manual_valveInpPos,
+            manual_tankFlowOut, set_manual_tankFlowOut,
+            manual_valveOutPos, set_manual_valveOutPos,
+            manual_evaluateStart, set_manual_evaluateStart,
+            manual_evaluateTime, set_manual_evaluateTime,
+            manual_evaluateError, set_manual_evaluateError,
         }}>
             {props.children}
         </AppContext.Provider>
