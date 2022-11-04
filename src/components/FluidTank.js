@@ -25,10 +25,10 @@ const FluidTank = (props) => {
     //Check if level is negative and set level to 0
     if (levelPx < 0) levelPx = 0;
     //Check if level is bigger than max level and set level to max level
-    let overflow = false;
-    if (levelPx > levelMaxPx) {
+    let overflow = "hidden";
+    if (levelPx >= levelMaxPx) {
         levelPx = levelMaxPx;
-        overflow = true;
+        overflow = "visible";
     }
 
     return (

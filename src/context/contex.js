@@ -1,4 +1,4 @@
-import React, {useState, useContext, useCallback} from 'react'
+import React, {useState, useContext, useCallback, useEffect} from 'react'
 
 export const AppContext = React.createContext(null);
 
@@ -12,22 +12,36 @@ export const ContextWrapper = (props) => {
     //Parameters
     const [parameters, setParameters] = useState({
         //Tank parameters [m]
-        tank_width: 0.5,
-        tank_depth: 0.1,
-        tank_height: 0.5,
+        tank_height: 1,
+        //Tank area [m^2]
+        tank_area: 0.1,
         //Water intake [m³/s]
-        flow_max: 0.0025
-    })
+        flow_max: 0.0025,
+        //Valve output constant
+        valve_out_k: 885.89,
+        //Simulation step [s]
+        simulation_step: 0.01,
+        //Evaluation time for control system [s]
+        measureTime: 60,
+        //Evaluation reference height   [m]
+        referenceHeight: 0.5,
 
-    //Variables
-    const [variables, setVariables] = useState({
-        //Water intake [m³/s]
-        flow_in: 0,
-        //Valve out [0...100%]
-        valve_out_pos: 0,
     })
+    const [time, setTime] = useState(0);
+    const [tankLevel, setTankLevel] = useState(0.0);
+    const [tankFlowInpMax, setTankFlowInpMax] = useState(0.0025);
+    const [tankFlowInp, setTankFlowInp] = useState(0);
+    const [valveInpPos, setValveInpPos] = useState(0);
+    const [tankFlowOut, setTankFlowOut] = useState(0);
+    const [valveOutPos, setValveOutPos] = useState(0);
 
-    const [tankLevel, setTankLevel] = useState(0);
+    const [evaluateError, setEvaluateError] = useState(0.0);
+    const [evaluateTime, setEvaluateTime] = useState(0.0);
+    const [evaluateStart, setEvaluateStart] = useState(false);
+
+
+
+
 
 
     //Initialize new game
@@ -47,8 +61,16 @@ export const ContextWrapper = (props) => {
         <AppContext.Provider value={{
             app, setApp,
             parameters, setParameters,
-            variables, setVariables,
-            tankLevel, setTankLevel
+            tankLevel, setTankLevel,
+            valveInpPos, setValveInpPos,
+            tankFlowInpMax, setTankFlowInpMax,
+            tankFlowInp, setTankFlowInp,
+            valveOutPos, setValveOutPos,
+            tankFlowOut, setTankFlowOut,
+            evaluateTime, setEvaluateTime,
+            evaluateError, setEvaluateError,
+            evaluateStart, setEvaluateStart,
+            time, setTime
         }}>
             {props.children}
         </AppContext.Provider>

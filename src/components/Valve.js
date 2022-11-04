@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 
 
 const Valve = (props) => {
-    const [position, setPosition] = useState(40)
+    const [position, setPosition] = useState(0)
 
     useEffect(() => {
         props.valvePositionReport(position);
