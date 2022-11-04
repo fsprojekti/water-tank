@@ -29,7 +29,6 @@ export const ContextWrapper = (props) => {
             referenceHeight: 0.5,
             //Valve intake max flow [m³/s]
             tankFlowInpMax: 0.0025,
-
         },
     })
 
@@ -43,8 +42,17 @@ export const ContextWrapper = (props) => {
     const [manual_evaluateTime, set_manual_evaluateTime] = useState(0);
     const [manual_evaluateError, set_manual_evaluateError] = useState(0);
 
+    const [mechanical_time, set_mechanical_time] = useState(0);
+    const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.1);
+    const [mechanical_tankFlowInp, set_mechanical_tankFlowInp] = useState(0);
+    const [mechanical_valveInpPos, set_mechanical_valveInpPos] = useState(0);
+    const [mechanical_tankFlowOut, set_mechanical_tankFlowOut] = useState(0);
+    const [mechanical_valveOutPos, set_mechanical_valveOutPos] = useState(0);
+    const [mechanical_evaluateStart, set_mechanical_evaluateStart] = useState(false);
+    const [mechanical_evaluateTime, set_mechanical_evaluateTime] = useState(0);
+    const [mechanical_evaluateError, set_mechanical_evaluateError] = useState(0);
 
-
+    const [p1, set_p1] = useState([300,100]);
 
 
     return (
@@ -60,6 +68,16 @@ export const ContextWrapper = (props) => {
             manual_evaluateStart, set_manual_evaluateStart,
             manual_evaluateTime, set_manual_evaluateTime,
             manual_evaluateError, set_manual_evaluateError,
+            mechanical_time, set_mechanical_time,
+            mechanical_tankLevel, set_mechanical_tankLevel,
+            mechanical_tankFlowInp, set_mechanical_tankFlowInp,
+            mechanical_valveInpPos, set_mechanical_valveInpPos,
+            mechanical_tankFlowOut, set_mechanical_tankFlowOut,
+            mechanical_valveOutPos, set_mechanical_valveOutPos,
+            mechanical_evaluateStart, set_mechanical_evaluateStart,
+            mechanical_evaluateTime, set_mechanical_evaluateTime,
+            mechanical_evaluateError, set_mechanical_evaluateError,
+            p1, set_p1,
         }}>
             {props.children}
         </AppContext.Provider>

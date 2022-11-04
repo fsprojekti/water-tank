@@ -1,17 +1,14 @@
-import {createRef, useContext, useEffect, useRef, useState} from "react";
-import {AppContext} from "../../context/contex";
-import Valve from "../Valve";
-import modelImage from "./ManualControlModel.png";
-import {Button, ButtonGroup, ProgressBar} from "react-bootstrap";
-import FluidTank from "../FluidTank";
-import SliderControl from "../SliderControl";
-import ReactBootstrapSlider from "react-bootstrap-slider/dist/react-bootstrap-slider";
-import DisplayVar from "../DisplayVar";
-import Evaluate from "../Evaluate";
-import DisplayVarEval from "../DisplayVarEval";
+import {useContext, useEffect} from "react";
+import {AppContext} from "../context/contex";
+import Valve from "../components/Valve";
+import modelImage from "../img/model.png";
+import FluidTank from "../components/FluidTank";
+import DisplayVar from "../components/DisplayVar";
+import Evaluate from "../components/Evaluate";
+import DisplayVarEval from "../components/DisplayVarEval";
 
 
-const TabManual = () => {
+const ManualControl = () => {
 
     const context = useContext(AppContext);
 
@@ -36,7 +33,7 @@ const TabManual = () => {
             if (context.manual_evaluateStart) {
                 context.set_manual_evaluateTime(context.manual_evaluateTime + context.manualController.parameters.simulation_step);
                 context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight) * context.manualController.parameters.simulation_step);
-               // console.log(Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight))
+                // console.log(Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight))
             }
 
 
@@ -69,7 +66,7 @@ const TabManual = () => {
     return (
 
         <div style={{
-            marginTop: "20px",
+            marginTop: "6px",
             marginLeft: "40px",
             height: "800px",
             width: "1500px",
@@ -98,4 +95,4 @@ const TabManual = () => {
     )
 }
 
-export default TabManual;
+export default ManualControl;
