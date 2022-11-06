@@ -7,6 +7,7 @@ import DisplayVar from "../components/DisplayVar";
 import Evaluate from "../components/Evaluate";
 import DisplayVarEval from "../components/DisplayVarEval";
 import Canvas from "../components/Canvas";
+import ValveDisabled from "../components/ValveDisabled";
 
 
 const MechanicalControl = () => {
@@ -19,6 +20,16 @@ const MechanicalControl = () => {
 
     let valvePositionReport2 = (value) => {
         context.set_mechanical_valveOutPos(value);
+    }
+
+    let platoonRodLength = (value) => {
+        //context.set_platoonRodLengthPx(value / 100 * context.mechanicalParameters.platoonRodLengthMaxPx);
+    }
+
+    let swingRodPivot = (value) => {
+        // let x=value/100*(context.mechanicalParameters.swingPointLimitsPx[1]-context.mechanicalParameters.swingPointLimitsPx[0])+context.mechanicalParameters.swingPointLimitsPx[0];
+        // context.set_pointSwingPx([x,context.pointSwingPx[1]]);
+        // context.set_valueSwing(value/100);
     }
 
     //Simulation model control
@@ -58,6 +69,14 @@ const MechanicalControl = () => {
     useEffect(() => {
         context.set_mechanical_tankFlowInp(context.manualController.parameters.tankFlowInpMax * context.mechanical_valveInpPos / 100)
     }, [context.mechanical_valveInpPos]);
+
+    //Change of mechanical regulator position
+    useEffect(() => {
+        let value = -1.25 * context.pointValveInpPx[1] + 237.5;
+        if (value > 100) value = 100;
+        if (value < 0) value = 0;
+        context.set_valveInpPos(value);
+    }, [context.pointValveInpPx]);
     //
     //Change of valve output position
     useEffect(() => {
@@ -76,15 +95,18 @@ const MechanicalControl = () => {
         }}>
             <FluidTank flow={context.mechanical_tankFlowInp / context.manualController.parameters.tankFlowInpMax * 100}
                        level={context.mechanical_tankLevel / context.manualController.parameters.tank_height * 100}/>
-            <Valve top={325} left={115} valvePositionReport={valvePositionReport1}/>
+            <ValveDisabled top={325} left={115} position={context.valveInpPos}/>
             <Valve top={470} left={115} valvePositionReport={valvePositionReport2}/>
-            <DisplayVar top={705} left={880} value={context.mechanical_tankLevel} unit={"m"} name={"Level"} decimal={3}/>
+            <DisplayVar top={705} left={880} value={context.mechanical_tankLevel} unit={"m"} name={"Level"}
+                        decimal={3}/>
             <DisplayVar top={210} left={290} value={context.mechanical_tankFlowInp} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
             <DisplayVar top={595} left={290} value={context.mechanical_tankFlowOut} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
             <DisplayVarEval top={750} left={850} value={context.manualController.parameters.referenceHeight} unit={"m"}
                             name={"Reference"} decimal={5}/>
+            <Valve top={60} left={1200} valvePositionReport={platoonRodLength}/>
+            <Valve top={160} left={1200} valvePositionReport={swingRodPivot}/>
             <Evaluate
                 top={720}
                 left={100}

@@ -3,12 +3,6 @@ import {useEffect, useState} from "react";
 
 
 const Valve = (props) => {
-    const [position, setPosition] = useState(0)
-
-    useEffect(() => {
-        props.valvePositionReport(position);
-    }
-    ,[position])
 
     return (
         <div className={"d-flex flex-column"} style={{
@@ -28,7 +22,7 @@ const Valve = (props) => {
                         paddingRight:"50px",
                     }}>
                         <div className={"p-1"} ><h6>Position:</h6></div>
-                        <div className={"p-1"} style={{width:"30px"}}><h6>{position}</h6></div>
+                        <div className={"p-1"} style={{width:"40px"}}><h6>{props.position.toFixed(1)}</h6></div>
                         <div className={"p-1"}><h6>%</h6></div>
                     </div>
                 </div>
@@ -39,11 +33,9 @@ const Valve = (props) => {
                     paddingRight: "20px",
                 }}>
                     <RangeSlider
-                        value={position}
+                        disabled={true}
+                        value={props.position}
                         tooltip={"off"}
-                        onChange={(data) => {
-                            setPosition(data.target.value);
-                        }}
                         max={100}
                         min={0}
                     />

@@ -52,8 +52,33 @@ export const ContextWrapper = (props) => {
     const [mechanical_evaluateTime, set_mechanical_evaluateTime] = useState(0);
     const [mechanical_evaluateError, set_mechanical_evaluateError] = useState(0);
 
-    const [p1, set_p1] = useState([300,100]);
 
+    const [parameters, set_parameters] = useState({
+        //Meter to px ratio [px/m]
+        k_meter_px: 350,
+    })
+
+    //Mechanical controller
+    const [mechanicalParameters, setMechanicalParameters] = useState({
+        // //Rod vertical parameters [m]
+        // rod1Min: 0,
+        // //Rod vertical parameters [m]
+        // rod1Max: 2,
+        // //Swing point limitations [Px]
+        swingPointLimitsPx: [350, 750],
+        //Swing rod length [Px]
+        swingRodLengthPx: 2 * 350,
+        //Platoon rod length [Px]
+        platoonRodLengthMaxPx: 1.5 * 350,
+    })
+
+    const [pointSwingPx, set_pointSwingPx] = useState([600, 100]);
+    const [pointPlatoonPx, set_pointPlatoonPx] = useState([960, 550]);
+    const [mechanical_rod1, set_mechanical_rod1] = useState(0.01);
+    const [platoonRodLengthPx, set_platoonRodLengthPx] = useState(350);
+    const [valueSwing, set_valueSwing] = useState(0.5);
+    const [pointValveInpPx, set_pointValveInpPx] = useState([0, 0]);
+    const [valveInpPos, set_valveInpPos] = useState(0);
 
     return (
         <AppContext.Provider value={{
@@ -77,7 +102,14 @@ export const ContextWrapper = (props) => {
             mechanical_evaluateStart, set_mechanical_evaluateStart,
             mechanical_evaluateTime, set_mechanical_evaluateTime,
             mechanical_evaluateError, set_mechanical_evaluateError,
-            p1, set_p1,
+            mechanicalParameters, setMechanicalParameters,
+            mechanical_rod1, set_mechanical_rod1,
+            pointSwingPx, set_pointSwingPx,
+            pointPlatoonPx, set_pointPlatoonPx,
+            platoonRodLengthPx, set_platoonRodLengthPx,
+            valueSwing, set_valueSwing,
+            pointValveInpPx, set_pointValveInpPx,
+            valveInpPos, set_valveInpPos,
         }}>
             {props.children}
         </AppContext.Provider>

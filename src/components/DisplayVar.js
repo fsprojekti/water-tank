@@ -1,6 +1,3 @@
-import ReactBootstrapSlider from "react-bootstrap-slider";
-import {useEffect, useState} from "react";
-
 
 const DisplayVar = (props) => {
 
