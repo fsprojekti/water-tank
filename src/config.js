@@ -4,51 +4,54 @@ module.exports.parameters = {
         height: 1,
         //Tank area [m^2]
         area: 0.1,
+        //Tank max level [Px] on scheme
+        offsetPx: 690,
+
     },
-    simulation:{
+    simulation: {
         //Simulation step [s]
         step: 0.01,
     },
-    intake:{
+    intake: {
         //Water intake max[m³/s]
         flow_max: 0.0025,
     },
-    drain:{
+    drain: {
         //Valve constant
         valveConstant: 885.89,
     },
-    evaluationManual:{
-        duration:60,
-        referenceLevel:0.75
+    evaluationManual: {
+        duration: 60,
+        referenceLevel: 0.75
     },
-    evaluationMechanical:{
-        duration:60,
-        referenceLevel:0.75
+    evaluationMechanical: {
+        duration: 60,
+        referenceLevel: 0.75
     },
-    render:{
-        m2Px:350,
-        tankBottomLevelPx:690
+    render: {
+        m2Px: 350,
+        canvas: {
+            width: 1400,
+            height: 630,
+        }
     },
-    controller:{
+    controller: {
+        //construction [m]
+        l1: 0.4,
+        l2: 0.5,
         //[m]
-        swingRodLength:1.5,
+        l3Limits: [0.5, 3],
         //[m]
-        pontoonRodLimits:[0.5, 1.5],
+        l4Limits: [0.5, 3],
         //[Px]
-        axisYGovernorPositionPx:197,
-        //Limits governor vertical movements [Px]
-        governorLimitsPx:[110, 190],
+        axisYGovernorPositionPx: 197,
+        //[Px]
+        swingPointPx: [460, 80]
     },
-    pontoon:{
+    pontoon: {
         //[Px]
-        height: 50,
+        heightPx: 50,
         //[Px]
-        axisXPx:930
-    },
-    pivot:{
-        //Horizontal axis position of pivot point[Px]
-        axisPx:100,
-        //Limit movement on horizontal axis
-        limitsPx:[350, 750]
+        axisXPx: 930
     }
 }

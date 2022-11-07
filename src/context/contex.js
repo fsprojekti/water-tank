@@ -44,7 +44,7 @@ export const ContextWrapper = (props) => {
     const [manual_evaluateError, set_manual_evaluateError] = useState(0);
 
     const [mechanical_time, set_mechanical_time] = useState(0);
-    const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.1);
+    const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.3);
     const [mechanical_tankLevelPx, set_mechanical_tankLevelPx] = useState(0);
     const [mechanical_tankFlowInp, set_mechanical_tankFlowInp] = useState(0);
     const [mechanical_valveInpPos, set_mechanical_valveInpPos] = useState(0);
@@ -76,13 +76,15 @@ export const ContextWrapper = (props) => {
         pontoonHeightPx: 50,
     })
 
-    const [pointSwingPx, set_pointSwingPx] = useState([600, 100]);
-    const [pointPlatoonPx, set_pointPlatoonPx] = useState([config.parameters.pontoon.axisXPx, 450]);
+    const [coordinateXSwingPx, set_coordinateXSwingPx] = useState(600);
+    const [coordinateYPlatoonPx, set_coordinateYPlatoonPx] = useState(0);
     const [mechanical_rod1, set_mechanical_rod1] = useState(0.01);
-    const [platoonRodLengthPx, set_platoonRodLengthPx] = useState(350);
     const [valueSwing, set_valueSwing] = useState(0.5);
     const [pointValveInpPx, set_pointValveInpPx] = useState([0, 0]);
     const [valveInpPos, set_valveInpPos] = useState(0);
+    const [l3, set_l3] = useState(1.35);
+    const [l4, set_l4] = useState(1.13);
+    const [governorPositionPx, set_governorPositionPx] = useState(0);
 
     return (
         <AppContext.Provider value={{
@@ -109,13 +111,15 @@ export const ContextWrapper = (props) => {
             mechanical_evaluateError, set_mechanical_evaluateError,
             mechanicalParameters, setMechanicalParameters,
             mechanical_rod1, set_mechanical_rod1,
-            pointSwingPx, set_pointSwingPx,
-            pointPlatoonPx, set_pointPlatoonPx,
-            platoonRodLengthPx, set_platoonRodLengthPx,
+            coordinateXSwingPx, set_coordinateXSwingPx,
+            coordinateYPlatoonPx, set_coordinateYPlatoonPx,
             valueSwing, set_valueSwing,
             pointValveInpPx, set_pointValveInpPx,
             valveInpPos, set_valveInpPos,
             mechanical_tankLevelPx, set_mechanical_tankLevelPx,
+            l3, set_l3,
+            l4, set_l4,
+            governorPositionPx, set_governorPositionPx,
         }}>
             {props.children}
         </AppContext.Provider>

@@ -1,16 +1,11 @@
 import {useContext, useEffect, useState} from "react";
 import {AppContext} from "../context/contex";
-import config from "../config"
-
 
 const FluidTank = (props) => {
     //Props
-    //Max level px
-    const levelMaxPx = 350;
     //Max flow animation width px
     const flowMaxPx = 43;
     //Window height
-    const bottomLevelPx = config.parameters.render.tankBottomLevelPx;
 
     //Variables
     //Flow [px]
@@ -22,13 +17,13 @@ const FluidTank = (props) => {
 
 
     //Level [px]
-    let levelPx = props.level / 100.0 * levelMaxPx;
+    let levelPx = props.level / 100.0 * props.heightPx;
     //Check if level is negative and set level to 0
     if (levelPx < 0) levelPx = 0;
     //Check if level is bigger than max level and set level to max level
     let overflow = "hidden";
-    if (levelPx >= levelMaxPx) {
-        levelPx = levelMaxPx;
+    if (levelPx >= props.heightPx) {
+        levelPx = props.heightPx;
         overflow = "visible";
     }
 
@@ -36,7 +31,7 @@ const FluidTank = (props) => {
         <div>
             <div style={{
                 position: "absolute",
-                top: bottomLevelPx - levelPx,
+                top: props.offsetPx - levelPx,
                 left: 505,
                 backgroundColor: "#3aa73f",
                 width: 923,
@@ -46,7 +41,7 @@ const FluidTank = (props) => {
             <div style={{
                 visibility: overflow,
                 position: "absolute",
-                top: bottomLevelPx - levelPx,
+                top: props.offsetPx - levelPx,
                 left: 1420,
                 backgroundColor: "#3aa73f",
                 width: 60,
@@ -56,20 +51,20 @@ const FluidTank = (props) => {
             <div style={{
                 visibility: overflow,
                 position: "absolute",
-                top: bottomLevelPx - levelPx + 20,
+                top: props.offsetPx - levelPx + 20,
                 left: 1450,
                 backgroundColor: "#3aa73f",
                 width: 30,
-                height: levelMaxPx - 10
+                height: props.heightPx - 10
             }}>
             </div>
             <div style={{
                 position: "absolute",
-                top: levelMaxPx - 27,
+                top: props.heightPx - 27,
                 left: 590,
                 backgroundColor: "#3aa73f",
                 width: flowPx,
-                height: levelMaxPx + 17
+                height: props.heightPx + 17
             }}>
             </div>
         </div>
