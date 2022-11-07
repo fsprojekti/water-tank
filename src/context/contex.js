@@ -1,4 +1,5 @@
 import React, {useState, useContext, useCallback, useEffect} from 'react'
+import config from "../config";
 
 export const AppContext = React.createContext(null);
 
@@ -44,6 +45,7 @@ export const ContextWrapper = (props) => {
 
     const [mechanical_time, set_mechanical_time] = useState(0);
     const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.1);
+    const [mechanical_tankLevelPx, set_mechanical_tankLevelPx] = useState(0);
     const [mechanical_tankFlowInp, set_mechanical_tankFlowInp] = useState(0);
     const [mechanical_valveInpPos, set_mechanical_valveInpPos] = useState(0);
     const [mechanical_tankFlowOut, set_mechanical_tankFlowOut] = useState(0);
@@ -70,10 +72,12 @@ export const ContextWrapper = (props) => {
         swingRodLengthPx: 2 * 350,
         //Platoon rod length [Px]
         platoonRodLengthMaxPx: 1.5 * 350,
+        //Pontoon height [Px]
+        pontoonHeightPx: 50,
     })
 
     const [pointSwingPx, set_pointSwingPx] = useState([600, 100]);
-    const [pointPlatoonPx, set_pointPlatoonPx] = useState([960, 550]);
+    const [pointPlatoonPx, set_pointPlatoonPx] = useState([config.parameters.pontoon.axisXPx, 450]);
     const [mechanical_rod1, set_mechanical_rod1] = useState(0.01);
     const [platoonRodLengthPx, set_platoonRodLengthPx] = useState(350);
     const [valueSwing, set_valueSwing] = useState(0.5);
@@ -83,6 +87,7 @@ export const ContextWrapper = (props) => {
     return (
         <AppContext.Provider value={{
             app, setApp,
+            parameters, set_parameters,
             manualController, setManualController,
             manual_time, set_manual_time,
             manual_tankLevel, set_manual_tankLevel,
@@ -110,6 +115,7 @@ export const ContextWrapper = (props) => {
             valueSwing, set_valueSwing,
             pointValveInpPx, set_pointValveInpPx,
             valveInpPos, set_valveInpPos,
+            mechanical_tankLevelPx, set_mechanical_tankLevelPx,
         }}>
             {props.children}
         </AppContext.Provider>

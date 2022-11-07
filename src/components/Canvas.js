@@ -1,5 +1,6 @@
 import React, {useContext, useEffect, useRef} from 'react'
 import {AppContext} from "../context/contex";
+import config from  "../config";
 
 const Canvas = props => {
 
@@ -24,11 +25,12 @@ const Canvas = props => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         //Redefine names
-        let A=[197,117];
+        let A=[config.parameters.controller.axisYGovernorPositionPx,110];
         let B=[0,0];
         let C=context.pointSwingPx;
         let D;
-        let E=context.pointPlatoonPx;
+        let E=[config.parameters.pontoon.axisXPx, context.pointPlatoonPx[1]];
+
         let l1=100;
         let l2=context.mechanicalParameters.swingRodLengthPx*(1-context.valueSwing);
         let l3=context.mechanicalParameters.swingRodLengthPx*context.valueSwing;
@@ -46,6 +48,13 @@ const Canvas = props => {
         let l5 = Math.sqrt(l1*l1 - l6*l6 );
         A[1]=B[1]+l5;
         context.set_pointValveInpPx(A);
+
+
+        //Draw pontoon
+        // ctx.beginPath();
+        // ctx.roundRect(800, 578 - (parseFloat(props.tankLevel) * context.parameters.k_meter_px), 250, context.mechanicalParameters.pontoonHeightPx, 5);
+        // ctx.fillStyle = "rgb(213,68,54)";
+        // ctx.fill();
 
         //Draw point A
         ctx.beginPath();
@@ -86,6 +95,9 @@ const Canvas = props => {
         ctx.lineTo(E[0], E[1]);
         ctx.strokeStyle = "rgb(52, 58, 64)";
         ctx.stroke();
+
+
+
     }
 
     return <canvas ref={canvasRef} {...props} width="1400" height="630"/>

@@ -1,5 +1,6 @@
 import {useContext, useEffect, useState} from "react";
 import {AppContext} from "../context/contex";
+import config from "../config"
 
 
 const FluidTank = (props) => {
@@ -9,7 +10,7 @@ const FluidTank = (props) => {
     //Max flow animation width px
     const flowMaxPx = 43;
     //Window height
-    const bottomLevelPx = 690;
+    const bottomLevelPx = config.parameters.render.tankBottomLevelPx;
 
     //Variables
     //Flow [px]
