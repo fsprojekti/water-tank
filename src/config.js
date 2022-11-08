@@ -21,7 +21,7 @@ module.exports.parameters = {
         valveConstant: 885.89,
     },
     evaluationManual: {
-        duration: 60,
+        duration: 120,
         referenceLevel: 0.75
     },
     evaluationMechanical: {

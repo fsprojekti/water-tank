@@ -44,7 +44,7 @@ export const ContextWrapper = (props) => {
     const [manual_evaluateError, set_manual_evaluateError] = useState(0);
 
     const [mechanical_time, set_mechanical_time] = useState(0);
-    const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.3);
+    const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.0);
     const [mechanical_tankLevelPx, set_mechanical_tankLevelPx] = useState(0);
     const [mechanical_tankFlowInp, set_mechanical_tankFlowInp] = useState(0);
     const [mechanical_valveInpPos, set_mechanical_valveInpPos] = useState(0);
@@ -82,8 +82,8 @@ export const ContextWrapper = (props) => {
     const [valueSwing, set_valueSwing] = useState(0.5);
     const [pointValveInpPx, set_pointValveInpPx] = useState([0, 0]);
     const [valveInpPos, set_valveInpPos] = useState(0);
-    const [l3, set_l3] = useState(1.35);
-    const [l4, set_l4] = useState(1.13);
+    const [l3, set_l3] = useState(1.3);
+    const [l4, set_l4] = useState(1.45);
     const [governorPositionPx, set_governorPositionPx] = useState(0);
 
     return (
