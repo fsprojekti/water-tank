@@ -35,7 +35,7 @@ const ManualControl = () => {
 
             if (context.manual_evaluateStart) {
                 context.set_manual_evaluateTime(context.manual_evaluateTime + config.parameters.simulation.step);
-                context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(config.parameters.evaluationManual.referenceLevel) * config.parameters.simulation.step);
+                context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(config.parameters.evaluationManual.referenceLevel-context.manual_tankLevel) * config.parameters.simulation.step);
                 // console.log(Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight))
             }
 
