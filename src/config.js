@@ -10,7 +10,7 @@ module.exports.parameters = {
     },
     simulation: {
         //Simulation step [s]
-        step: 0.01,
+        step: 0.1,
     },
     intake: {
         //Water intake max[m³/s]

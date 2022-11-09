@@ -42,6 +42,9 @@ export const ContextWrapper = (props) => {
     const [manual_evaluateStart, set_manual_evaluateStart] = useState(false);
     const [manual_evaluateTime, set_manual_evaluateTime] = useState(0);
     const [manual_evaluateError, set_manual_evaluateError] = useState(0);
+    const [manual_dataTime, set_manual_dataTime] = useState([]);
+    const [manual_dataTankLevel, set_manual_dataTankLevel]=useState([]);
+    const [manual_dataReferenceLevel, set_manual_dataReferenceLevel]=useState([]);
 
     const [mechanical_time, set_mechanical_time] = useState(0);
     const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.0);
@@ -120,6 +123,10 @@ export const ContextWrapper = (props) => {
             l3, set_l3,
             l4, set_l4,
             governorPositionPx, set_governorPositionPx,
+            manual_dataTime, set_manual_dataTime,
+            manual_dataTankLevel, set_manual_dataTankLevel,
+            manual_dataReferenceLevel, set_manual_dataReferenceLevel
+
         }}>
             {props.children}
         </AppContext.Provider>

@@ -111,8 +111,8 @@ const MechanicalControl = () => {
                         decimal={5}/>
             <DisplayVar top={595} left={290} value={context.mechanical_tankFlowOut} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
-            <DisplayVarEval top={750} left={850} value={context.manualController.parameters.referenceHeight} unit={"m"}
-                            name={"Reference"} decimal={5}/>
+            {/*<DisplayVarEval top={750} left={850} value={context.manualController.parameters.referenceHeight} unit={"m"}*/}
+            {/*                name={"Reference"} decimal={5}/>*/}
             <Slider
                 top={60}
                 left={1200}

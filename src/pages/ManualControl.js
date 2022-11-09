@@ -6,6 +6,8 @@ import FluidTank from "../components/FluidTank";
 import DisplayVar from "../components/DisplayVar";
 import Evaluate from "../components/Evaluate";
 import DisplayVarEval from "../components/DisplayVarEval";
+import Chart from "../components/Chart";
+
 const config = require('../config');
 
 
@@ -33,7 +35,7 @@ const ManualControl = () => {
 
             if (context.manual_evaluateStart) {
                 context.set_manual_evaluateTime(context.manual_evaluateTime + config.parameters.simulation.step);
-                context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight) * config.parameters.simulation.step);
+                context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(config.parameters.evaluationManual.referenceLevel) * config.parameters.simulation.step);
                 // console.log(Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight))
             }
 
@@ -50,6 +52,7 @@ const ManualControl = () => {
                 newLevel = config.parameters.tank.height;
             }
             context.set_manual_tankLevel(newLevel);
+
         }, config.parameters.simulation.step * 1000);
         return () => clearInterval(interval);
     }, [context.manual_time]);
@@ -63,6 +66,16 @@ const ManualControl = () => {
     useEffect(() => {
         context.set_manual_tankFlowOut(Math.sqrt(2 * 9.81 * context.manual_tankLevel) * context.manual_valveOutPos / 100 / config.parameters.drain.valveConstant)
     }, [context.manual_valveOutPos, context.manual_time]);
+
+    useEffect(() => {
+        //Chart data
+        let s=(context.manual_time).toFixed(0);
+        if (context.manual_dataTime.length < s && context.manual_tankLevel>0) {
+            context.set_manual_dataTime([...context.manual_dataTime, context.manual_time.toFixed(1)]);
+            context.set_manual_dataTankLevel([...context.manual_dataTankLevel, context.manual_tankLevel]);
+            context.set_manual_dataReferenceLevel([...context.manual_dataReferenceLevel, config.parameters.evaluationManual.referenceLevel]);
+        }
+    }, [context.manual_time])
 
     return (
 
@@ -81,10 +94,12 @@ const ManualControl = () => {
             <Valve top={325} left={115} valvePositionReport={valvePositionReport1}/>
             <Valve top={470} left={115} valvePositionReport={valvePositionReport2}/>
             <DisplayVar top={705} left={880} value={context.manual_tankLevel} unit={"m"} name={"Level"} decimal={3}/>
-            <DisplayVar top={210} left={290} value={context.manual_tankFlowInp} unit={"m³/s"} name={"Flow"} decimal={5}/>
-            <DisplayVar top={595} left={290} value={context.manual_tankFlowOut} unit={"m³/s"} name={"Flow"} decimal={5}/>
-            {/*<DisplayVarEval top={750} left={850} value={context.manualController.parameters.referenceHeight} unit={"m"}*/}
-            {/*                name={"Reference"} decimal={5}/>*/}
+            <DisplayVar top={210} left={290} value={context.manual_tankFlowInp} unit={"m³/s"} name={"Flow"}
+                        decimal={5}/>
+            <DisplayVar top={595} left={290} value={context.manual_tankFlowOut} unit={"m³/s"} name={"Flow"}
+                        decimal={5}/>
+            <DisplayVarEval top={750} left={850} value={config.parameters.evaluationManual.referenceLevel} unit={"m"}
+                            name={"Reference"} decimal={5}/>
 
 
             <Evaluate
@@ -94,6 +109,20 @@ const ManualControl = () => {
                 time={context.manual_evaluateTime}
                 error={context.manual_evaluateError / (config.parameters.evaluationManual.duration * config.parameters.simulation.step * config.parameters.evaluationManual.referenceLevel)}
             />
+            {/*<div style={{*/}
+            {/*    position: "absolute",*/}
+            {/*    top: 900,*/}
+            {/*    left: 50,*/}
+            {/*    width: 1400,*/}
+            {/*    height: 400*/}
+            {/*}}>*/}
+            {/*    <Chart*/}
+            {/*        time={context.manual_dataTime}*/}
+            {/*        referenceLevel={context.manual_dataReferenceLevel}*/}
+            {/*        tankLevel={context.manual_dataTankLevel}*/}
+            {/*    />*/}
+            {/*</div>*/}
+
         </div>
 
 
