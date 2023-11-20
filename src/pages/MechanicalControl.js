@@ -9,6 +9,9 @@ import DisplayVarEval from "../components/DisplayVarEval";
 import Canvas from "../components/Canvas";
 import ValveDisabled from "../components/ValveDisabled";
 import Slider from "../components/Slider";
+import {Button, ButtonGroup, Row} from "react-bootstrap";
+import Operate from "../components/Operate";
+import Chart from "../components/Chart";
 
 const config = require('../config');
 
@@ -32,37 +35,34 @@ const MechanicalControl = () => {
 
     //Simulation model control
     useEffect(() => {
-        const interval = setInterval(() => {
-            //Set time
-            context.set_mechanical_time(context.mechanical_time + context.manualController.parameters.simulation_step);
+            let interval;
+            if (context.mechanical_operate === "RUN") {
+                interval = setInterval(() => {
+                    //Set time
+                    let time = parseFloat((context.mechanical_time + config.parameters.simulation.step).toFixed(1));
+                    // console.log(time)
+                    context.set_mechanical_time(time);
 
-            if (context.mechanical_tankLevel > 0 && context.mechanical_evaluateTime < context.manualController.parameters.measureTime) {
-                context.set_mechanical_evaluateStart(true);
-            } else context.set_mechanical_evaluateStart(false);
-
-            if (context.mechanical_evaluateStart) {
-                context.set_mechanical_evaluateTime(context.mechanical_evaluateTime + context.manualController.parameters.simulation_step);
-                context.set_mechanical_evaluateError(context.mechanical_evaluateError + Math.abs(context.mechanical_tankLevel - context.manualController.parameters.referenceHeight) * context.manualController.parameters.simulation_step);
-                // console.log(Math.abs(context.mechanical_tankLevel - context.manualController.parameters.referenceHeight))
+                    let flowDiff = context.mechanical_tankFlowInp - context.mechanical_tankFlowOut;
+                    //console.log("Tank flow inp: " + context.tankFlowInp);
+                    let dVolume = flowDiff * config.parameters.simulation.step;
+                    let dLevel = dVolume / context.manualController.parameters.tank_area;
+                    let newLevel = context.mechanical_tankLevel + dLevel;
+                    if (newLevel < 0) {
+                        newLevel = 0;
+                    }
+                    if (newLevel > context.manualController.parameters.tank_height) {
+                        newLevel = context.manualController.parameters.tank_height;
+                    }
+                    context.set_mechanical_tankLevel(newLevel);
+                }, config.parameters.simulation.step * 1000);
             }
-
-
-            let flowDiff = context.mechanical_tankFlowInp - context.mechanical_tankFlowOut;
-            //console.log("Tank flow inp: " + context.tankFlowInp);
-            let dVolume = flowDiff * context.manualController.parameters.simulation_step;
-            let dLevel = dVolume / context.manualController.parameters.tank_area;
-            let newLevel = context.mechanical_tankLevel + dLevel;
-            if (newLevel < 0) {
-                newLevel = 0;
+            return () => {
+                clearInterval(interval);
             }
-            if (newLevel > context.manualController.parameters.tank_height) {
-                newLevel = context.manualController.parameters.tank_height;
-            }
-            context.set_mechanical_tankLevel(newLevel);
-        }, context.manualController.parameters.simulation_step * 1000);
-        return () => clearInterval(interval);
-    }, [context.mechanical_time]);
-    //
+        }, [context.mechanical_time, context.mechanical_operate]
+    );
+
     //Change of valve intake position
     useEffect(() => {
         context.set_mechanical_tankFlowInp(config.parameters.intake.flow_max * context.mechanical_valveInpPos / 100)
@@ -82,22 +82,53 @@ const MechanicalControl = () => {
         context.set_mechanical_tankFlowOut(Math.sqrt(2 * 9.81 * context.mechanical_tankLevel) * context.mechanical_valveOutPos / 100 / config.parameters.drain.valveConstant)
     }, [context.mechanical_valveOutPos, context.mechanical_time]);
 
-    // useEffect(() => {
-    //     context.set_coordinateYPlatoonPx(config.parameters.tank.offsetPx
-    //         -context.mechanical_tankLevel *config.parameters.tank.height *config.parameters.render.m2Px
-    //     -config.parameters.pontoon.heightPx);
-    // }, [context.mechanical_tankLevel]);
+    useEffect(() => {
+        switch (context.mechanical_operate) {
+            case "RUN": {
+
+            }
+                break;
+            case "STOP": {
+
+            }
+                break;
+            case "RESET": {
+                context.set_mechanical_time(0);
+                context.set_mechanical_tankLevel(0);
+                context.set_mechanical_dataTime([]);
+                context.set_mechanical_dataTankLevel([]);
+                context.set_mechanical_dataReferenceLevel([]);
+                context.set_mechanical_dataError([]);
+                console.log("RESET");
+            }
+                break;
+        }
+    }, [context.mechanical_operate]);
+
+    useEffect(() => {
+        if(context.mechanical_time % 1 === 0){
+            context.set_mechanical_dataTime([...context.mechanical_dataTime, context.mechanical_time]);
+            context.set_mechanical_dataTankLevel([...context.mechanical_dataTankLevel, context.mechanical_tankLevel]);
+            context.set_mechanical_dataReferenceLevel([...context.mechanical_dataReferenceLevel, context.manualController.parameters.referenceHeight]);
+            let error = Math.abs(context.manualController.parameters.referenceHeight - context.mechanical_tankLevel);
+            let oldError = context.mechanical_dataError[context.mechanical_dataError.length - 1];
+            if (oldError === undefined || NaN) oldError = 0;
+            context.set_mechanical_dataError([...context.mechanical_dataError, oldError + error]);
+        }
+    }, [context.mechanical_time])
+
 
     return (
 
         <div style={{
             marginTop: "6px",
             marginLeft: "40px",
-            height: "800px",
+            height: "700px",
             width: "1500px",
             backgroundImage: `url(${modelImage})`,
             backgroundSize: "1500px"
         }}>
+
             <FluidTank level={context.mechanical_tankLevel * 100}
                        heightPx={config.parameters.tank.height * config.parameters.render.m2Px}
                        offsetPx={config.parameters.tank.offsetPx}
@@ -107,12 +138,12 @@ const MechanicalControl = () => {
             <Valve top={470} left={115} valvePositionReport={valvePositionReport2}/>
             <DisplayVar top={705} left={880} value={context.mechanical_tankLevel} unit={"m"} name={"Level"}
                         decimal={3}/>
+            <DisplayVarEval top={705} left={600} value={config.parameters.evaluationMechanical.referenceLevel} unit={"m"}
+                            name={"Reference"} decimal={5}/>
             <DisplayVar top={210} left={290} value={context.mechanical_tankFlowInp} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
             <DisplayVar top={595} left={290} value={context.mechanical_tankFlowOut} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
-            {/*<DisplayVarEval top={750} left={850} value={context.manualController.parameters.referenceHeight} unit={"m"}*/}
-            {/*                name={"Reference"} decimal={5}/>*/}
             <Slider
                 top={60}
                 left={1200}
@@ -132,14 +163,18 @@ const MechanicalControl = () => {
                     max={config.parameters.controller.l4Limits[1]}
                     position={context.l4}
             />
-            {/*<Evaluate*/}
-            {/*    top={720}*/}
-            {/*    left={100}*/}
-            {/*    timeMax={context.manualController.parameters.measureTime}*/}
-            {/*    time={context.mechanical_evaluateTime}*/}
-            {/*    error={context.mechanical_evaluateError / (context.manualController.parameters.measureTime * context.manualController.parameters.simulation_step * context.manualController.parameters.referenceHeight)}*/}
-            {/*/>*/}
             <Canvas p1={context.p1} level={context.mechanical_tankLevel}/>
+
+            <Row className={"d-flex justify-content-center"} style={{paddingTop: "94px"}}>
+                <Operate state={context.mechanical_operate} stateReport={context.set_mechanical_operate}/>
+            </Row>
+
+            <Chart data={{
+                time: context.mechanical_dataTime,
+                level: context.mechanical_dataTankLevel,
+                reference: context.mechanical_dataReferenceLevel,
+                error: context.mechanical_dataError
+            }}/>
 
 
         </div>

@@ -113,11 +113,8 @@ let clcSwingPlatoonJointPoint = (swingPoint, platoonPoint, lengthSwingRod, lengt
     let b = Math.abs(platoonPoint[0] - swingPoint[0]);
     let c = Math.sqrt(a * a + b * b);
     let beta = Math.asin(a / c);
-    console.log(beta * 180 / Math.PI);
     let beta_2 = Math.acos((lengthPlatoonRod * lengthPlatoonRod + c * c - lengthSwingRod * lengthSwingRod) / (2 * lengthPlatoonRod * c));
-    console.log(beta_2 * 180 / Math.PI);
     let beta_3 = beta + beta_2;
-    console.log(beta_3 * 180 / Math.PI);
     let e = lengthPlatoonRod * Math.sin(beta_3);
     let f = Math.sqrt(lengthPlatoonRod * lengthPlatoonRod - e * e);
     if (beta_3 > Math.PI / 2) {

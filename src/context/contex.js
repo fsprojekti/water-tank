@@ -22,8 +22,6 @@ export const ContextWrapper = (props) => {
             flow_max: 0.0025,
             //Valve output constant
             valve_out_k: 885.89,
-            //Simulation step [s]
-            simulation_step: 0.01,
             //Evaluation time for control system [s]
             measureTime: 60,
             //Evaluation reference height   [m]
@@ -33,19 +31,20 @@ export const ContextWrapper = (props) => {
         },
     })
 
+    //Three modes are available: RUN, STOP, RESET
+    const [manual_operate, set_manual_operate] = useState("STOP");
     const [manual_time, set_manual_time] = useState(0);
     const [manual_tankLevel, set_manual_tankLevel] = useState(0);
     const [manual_tankFlowInp, set_manual_tankFlowInp] = useState(0);
     const [manual_valveInpPos, set_manual_valveInpPos] = useState(0);
     const [manual_tankFlowOut, set_manual_tankFlowOut] = useState(0);
     const [manual_valveOutPos, set_manual_valveOutPos] = useState(0);
-    const [manual_evaluateStart, set_manual_evaluateStart] = useState(false);
-    const [manual_evaluateTime, set_manual_evaluateTime] = useState(0);
-    const [manual_evaluateError, set_manual_evaluateError] = useState(0);
     const [manual_dataTime, set_manual_dataTime] = useState([]);
     const [manual_dataTankLevel, set_manual_dataTankLevel]=useState([]);
     const [manual_dataReferenceLevel, set_manual_dataReferenceLevel]=useState([]);
+    const [manual_dataError, set_manual_dataError]=useState([]);
 
+    const [mechanical_operate, set_mechanical_operate] = useState("STOP");
     const [mechanical_time, set_mechanical_time] = useState(0);
     const [mechanical_tankLevel, set_mechanical_tankLevel] = useState(0.0);
     const [mechanical_tankLevelPx, set_mechanical_tankLevelPx] = useState(0);
@@ -53,9 +52,10 @@ export const ContextWrapper = (props) => {
     const [mechanical_valveInpPos, set_mechanical_valveInpPos] = useState(0);
     const [mechanical_tankFlowOut, set_mechanical_tankFlowOut] = useState(0);
     const [mechanical_valveOutPos, set_mechanical_valveOutPos] = useState(0);
-    const [mechanical_evaluateStart, set_mechanical_evaluateStart] = useState(false);
-    const [mechanical_evaluateTime, set_mechanical_evaluateTime] = useState(0);
-    const [mechanical_evaluateError, set_mechanical_evaluateError] = useState(0);
+    const [mechanical_dataTime, set_mechanical_dataTime] = useState([]);
+    const [mechanical_dataTankLevel, set_mechanical_dataTankLevel]=useState([]);
+    const [mechanical_dataReferenceLevel, set_mechanical_dataReferenceLevel]=useState([]);
+    const [mechanical_dataError, set_mechanical_dataError]=useState([]);
 
 
     const [parameters, set_parameters] = useState({
@@ -94,24 +94,20 @@ export const ContextWrapper = (props) => {
             app, setApp,
             parameters, set_parameters,
             manualController, setManualController,
+            manual_operate, set_manual_operate,
             manual_time, set_manual_time,
             manual_tankLevel, set_manual_tankLevel,
             manual_tankFlowInp, set_manual_tankFlowInp,
             manual_valveInpPos, set_manual_valveInpPos,
             manual_tankFlowOut, set_manual_tankFlowOut,
             manual_valveOutPos, set_manual_valveOutPos,
-            manual_evaluateStart, set_manual_evaluateStart,
-            manual_evaluateTime, set_manual_evaluateTime,
-            manual_evaluateError, set_manual_evaluateError,
+            mechanical_operate, set_mechanical_operate,
             mechanical_time, set_mechanical_time,
             mechanical_tankLevel, set_mechanical_tankLevel,
             mechanical_tankFlowInp, set_mechanical_tankFlowInp,
             mechanical_valveInpPos, set_mechanical_valveInpPos,
             mechanical_tankFlowOut, set_mechanical_tankFlowOut,
             mechanical_valveOutPos, set_mechanical_valveOutPos,
-            mechanical_evaluateStart, set_mechanical_evaluateStart,
-            mechanical_evaluateTime, set_mechanical_evaluateTime,
-            mechanical_evaluateError, set_mechanical_evaluateError,
             mechanicalParameters, setMechanicalParameters,
             mechanical_rod1, set_mechanical_rod1,
             coordinateXSwingPx, set_coordinateXSwingPx,
@@ -125,8 +121,12 @@ export const ContextWrapper = (props) => {
             governorPositionPx, set_governorPositionPx,
             manual_dataTime, set_manual_dataTime,
             manual_dataTankLevel, set_manual_dataTankLevel,
-            manual_dataReferenceLevel, set_manual_dataReferenceLevel
-
+            manual_dataReferenceLevel, set_manual_dataReferenceLevel,
+            manual_dataError, set_manual_dataError,
+            mechanical_dataTime, set_mechanical_dataTime,
+            mechanical_dataTankLevel, set_mechanical_dataTankLevel,
+            mechanical_dataReferenceLevel, set_mechanical_dataReferenceLevel,
+            mechanical_dataError, set_mechanical_dataError
         }}>
             {props.children}
         </AppContext.Provider>

@@ -1,66 +1,93 @@
-import {useEffect, useState} from "react";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import React, {useEffect, useRef, useState} from 'react';
+import * as echarts from 'echarts';
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend
-);
+const TimeSeriesChart = ({data}) => {
+    const chartRef = useRef(null);
+    const chartInstance = useRef(null);
 
-const Chart = (props) => {
-    let options = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
-            },
-            title: {
-                display: false,
-                text: 'Chart.js Line Chart',
-            },
-        },
-        animation: {
-            duration: 0
+    useEffect(() => {
+        // Initialize the chart
+        if (!chartInstance.current) {
+            chartInstance.current = echarts.init(chartRef.current);
         }
-    };
 
-    let data = {
-        labels: props.time,
-        datasets: [
-            {
-                label: 'Tank level',
-                data: props.tankLevel,
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                pointRadius: 0
+        const seriesData1 = data.time.map((time, index) => [time, parseFloat(data.level[index].toFixed(3))]);
+        const seriesData2 = data.time.map((time, index) => [time, parseFloat(data.reference[index].toFixed(3))]);
+        const seriesData3 = data.time.map((time, index) => [time, parseFloat(data.error[index].toFixed(3))]);
+
+
+        // Configure the chart options
+        const options = {
+            animation: false,
+            tooltip: {
+                trigger: 'axis'
             },
-            {
-                label: 'Reference level',
-                data: props.referenceLevel,
-                borderColor: 'rgb(53, 162, 235)',
-                backgroundColor: 'rgba(53, 162, 235, 0.5)',
-                pointRadius: 0
+            xAxis: {
+                type: 'value',
+                splitLine: {
+                    show: true
+                },
+                name: 'Time [s]'
             },
-        ],
-    };
+            yAxis: [
+                {
+                    type: 'value',
+                    splitLine: {
+                        show: true
+                    },
+                    name: 'Level [m]'
+                },
+                {
+                    type: 'value',
+                    splitLine: {
+                        show: false
+                    },
+                    name: 'Error [m*s]',
+                    axisLine: {
+                        show: true,
+                        lineStyle: {
+                            color: "#fd8000"
+                        }
+                    },
+                }],
 
-    return (
-        <Line options={options} data={data} />
-    )
-}
+            series: [
+                {
+                    name: 'Level',
+                    type: 'line',
+                    data: seriesData1,
+                },
+                {
+                    name: 'Reference',
+                    type: 'line',
+                    data: seriesData2,
+                },
+                {
+                    name: 'Error',
+                    type: 'line',
+                    data: seriesData3,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: "#fd8000"
+                    },
+                    lineStyle: {
+                        color: "#fd8000"
+                    }
+                }
+            ]
+        };
 
-export default Chart;
+        // Set the options
+        chartInstance.current.setOption(options);
+
+        return () => {
+            // if (chartInstance.current) {
+            //     chartInstance.current.dispose();
+            // }
+        };
+    }, [data]);
+
+    return <div ref={chartRef} style={{width: '100%', height: '600px', marginTop: '-25px', marginLeft: "-100px"}}/>;
+};
+
+export default TimeSeriesChart;

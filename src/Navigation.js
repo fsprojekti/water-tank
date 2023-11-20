@@ -4,8 +4,8 @@ import {LinkContainer} from 'react-router-bootstrap'
 
 function Navigation() {
     return (
-        <Navbar bg="dark" variant="dark">
-            <Navbar.Brand href="#home" style={{paddingLeft:"10px"}}>MKT 2022 </Navbar.Brand>
+        <Navbar bg="dark" variant="dark" style={{width:"1530px"}}>
+            <Navbar.Brand href="#home" style={{paddingLeft:"10px"}}>MKTP Laboratory </Navbar.Brand>
             <Nav className="mr-auto">
                 <LinkContainer to="/manual">
                     <Nav.Link>Manual control</Nav.Link>

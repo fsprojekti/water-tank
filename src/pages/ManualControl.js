@@ -6,7 +6,9 @@ import FluidTank from "../components/FluidTank";
 import DisplayVar from "../components/DisplayVar";
 import Evaluate from "../components/Evaluate";
 import DisplayVarEval from "../components/DisplayVarEval";
+import Operate from "../components/Operate";
 import Chart from "../components/Chart";
+import {Button, ButtonGroup, Row} from "react-bootstrap";
 
 const config = require('../config');
 
@@ -25,38 +27,57 @@ const ManualControl = () => {
 
     //Simulation model control
     useEffect(() => {
-        const interval = setInterval(() => {
-            //Set time
-            context.set_manual_time(context.manual_time + config.parameters.simulation.step);
+        let interval;
+        if (context.manual_operate === "RUN") {
+            interval = setInterval(() => {
+                //Set time
+                let time = parseFloat((context.manual_time + config.parameters.simulation.step).toFixed(1));
+                context.set_manual_time(time);
 
-            if (context.manual_tankLevel > 0 && context.manual_evaluateTime < config.parameters.evaluationManual.duration) {
-                context.set_manual_evaluateStart(true);
-            } else context.set_manual_evaluateStart(false);
+                let flowDiff = context.manual_tankFlowInp - context.manual_tankFlowOut;
+                //console.log("Tank flow inp: " + context.tankFlowInp);
+                let dVolume = flowDiff * config.parameters.simulation.step;
+                let dLevel = dVolume / config.parameters.tank.area;
+                let newLevel = context.manual_tankLevel + dLevel;
+                if (newLevel < 0) {
+                    newLevel = 0;
+                }
+                if (newLevel > config.parameters.tank.height) {
+                    newLevel = config.parameters.tank.height;
+                }
+                context.set_manual_tankLevel(newLevel);
 
-            if (context.manual_evaluateStart) {
-                context.set_manual_evaluateTime(context.manual_evaluateTime + config.parameters.simulation.step);
-                context.set_manual_evaluateError(context.manual_evaluateError + Math.abs(config.parameters.evaluationManual.referenceLevel-context.manual_tankLevel) * config.parameters.simulation.step);
-                // console.log(Math.abs(context.manual_tankLevel - context.manualController.parameters.referenceHeight))
+            }, config.parameters.simulation.step * 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        }
+    }, [context.manual_time, context.manual_operate]);
+
+    useEffect(() => {
+        switch (context.manual_operate) {
+            case "RUN": {
+
             }
+                break;
+            case "STOP": {
 
-
-            let flowDiff = context.manual_tankFlowInp - context.manual_tankFlowOut;
-            //console.log("Tank flow inp: " + context.tankFlowInp);
-            let dVolume = flowDiff * config.parameters.simulation.step;
-            let dLevel = dVolume / config.parameters.tank.area;
-            let newLevel = context.manual_tankLevel + dLevel;
-            if (newLevel < 0) {
-                newLevel = 0;
             }
-            if (newLevel > config.parameters.tank.height) {
-                newLevel = config.parameters.tank.height;
+                break;
+            case "RESET": {
+                context.set_manual_time(0);
+                context.set_manual_tankLevel(0);
+                context.set_manual_dataTime([]);
+                context.set_manual_dataTankLevel([]);
+                context.set_manual_dataReferenceLevel([]);
+                context.set_manual_dataError([]);
+                console.log("RESET");
             }
-            context.set_manual_tankLevel(newLevel);
+                break;
+        }
 
-        }, config.parameters.simulation.step * 1000);
-        return () => clearInterval(interval);
-    }, [context.manual_time]);
-    //
+    }, [context.manual_operate]);
+
     //Change of valve intake position
     useEffect(() => {
         context.set_manual_tankFlowInp(config.parameters.intake.flow_max * context.manual_valveInpPos / 100)
@@ -69,11 +90,16 @@ const ManualControl = () => {
 
     useEffect(() => {
         //Chart data
-        let s=(context.manual_time).toFixed(0);
-        if (context.manual_dataTime.length < s && context.manual_tankLevel>0) {
-            context.set_manual_dataTime([...context.manual_dataTime, context.manual_time.toFixed(1)]);
+        //if context.manual_time shows 1 or 2 or 3 etc. seconds
+
+        if (context.manual_time % 1 === 0) {
+            context.set_manual_dataTime([...context.manual_dataTime, context.manual_time]);
             context.set_manual_dataTankLevel([...context.manual_dataTankLevel, context.manual_tankLevel]);
             context.set_manual_dataReferenceLevel([...context.manual_dataReferenceLevel, config.parameters.evaluationManual.referenceLevel]);
+            let error = Math.abs(context.manual_tankLevel - config.parameters.evaluationManual.referenceLevel);
+            let oldError = context.manual_dataError[context.manual_dataError.length - 1];
+            if (oldError === undefined || NaN) oldError = 0;
+            context.set_manual_dataError([...context.manual_dataError, oldError + error]);
         }
     }, [context.manual_time])
 
@@ -82,7 +108,7 @@ const ManualControl = () => {
         <div style={{
             marginTop: "6px",
             marginLeft: "40px",
-            height: "800px",
+            height: "700px",
             width: "1500px",
             backgroundImage: `url(${modelImage})`,
             backgroundSize: "1500px"
@@ -98,17 +124,20 @@ const ManualControl = () => {
                         decimal={5}/>
             <DisplayVar top={595} left={290} value={context.manual_tankFlowOut} unit={"m³/s"} name={"Flow"}
                         decimal={5}/>
-            <DisplayVarEval top={750} left={850} value={config.parameters.evaluationManual.referenceLevel} unit={"m"}
+            <DisplayVarEval top={705} left={600} value={config.parameters.evaluationManual.referenceLevel} unit={"m"}
                             name={"Reference"} decimal={5}/>
+            <Row className={"d-flex justify-content-center"} style={{paddingTop: "730px"}}>
+                <Operate state={context.manual_operate} stateReport={(state) => context.set_manual_operate(state)}/>
+            </Row>
+
+            <Chart data={{
+                time: context.manual_dataTime,
+                level: context.manual_dataTankLevel,
+                reference: context.manual_dataReferenceLevel,
+                error: context.manual_dataError
+            }}/>
 
 
-            <Evaluate
-                top={720}
-                left={100}
-                timeMax={config.parameters.evaluationManual.duration}
-                time={context.manual_evaluateTime}
-                error={context.manual_evaluateError / (config.parameters.evaluationManual.duration * config.parameters.simulation.step * config.parameters.evaluationManual.referenceLevel)}
-            />
             {/*<div style={{*/}
             {/*    position: "absolute",*/}
             {/*    top: 900,*/}

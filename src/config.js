@@ -26,7 +26,7 @@ module.exports.parameters = {
     },
     evaluationMechanical: {
         duration: 60,
-        referenceLevel: 0.75
+        referenceLevel: 0.50
     },
     render: {
         m2Px: 350,
