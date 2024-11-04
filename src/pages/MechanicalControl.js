@@ -106,7 +106,7 @@ const MechanicalControl = () => {
     }, [context.mechanical_operate]);
 
     useEffect(() => {
-        if(context.mechanical_time % 1 === 0){
+        if(context.mechanical_time*10 % 1 === 0){
             context.set_mechanical_dataTime([...context.mechanical_dataTime, context.mechanical_time]);
             context.set_mechanical_dataTankLevel([...context.mechanical_dataTankLevel, context.mechanical_tankLevel]);
             context.set_mechanical_dataReferenceLevel([...context.mechanical_dataReferenceLevel, context.manualController.parameters.referenceHeight]);

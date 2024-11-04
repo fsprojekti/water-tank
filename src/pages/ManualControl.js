@@ -92,7 +92,7 @@ const ManualControl = () => {
         //Chart data
         //if context.manual_time shows 1 or 2 or 3 etc. seconds
 
-        if (context.manual_time % 1 === 0) {
+        if (context.manual_time*10 % 1 === 0) {
             context.set_manual_dataTime([...context.manual_dataTime, context.manual_time]);
             context.set_manual_dataTankLevel([...context.manual_dataTankLevel, context.manual_tankLevel]);
             context.set_manual_dataReferenceLevel([...context.manual_dataReferenceLevel, config.parameters.evaluationManual.referenceLevel]);
@@ -136,21 +136,6 @@ const ManualControl = () => {
                 reference: context.manual_dataReferenceLevel,
                 error: context.manual_dataError
             }}/>
-
-
-            {/*<div style={{*/}
-            {/*    position: "absolute",*/}
-            {/*    top: 900,*/}
-            {/*    left: 50,*/}
-            {/*    width: 1400,*/}
-            {/*    height: 400*/}
-            {/*}}>*/}
-            {/*    <Chart*/}
-            {/*        time={context.manual_dataTime}*/}
-            {/*        referenceLevel={context.manual_dataReferenceLevel}*/}
-            {/*        tankLevel={context.manual_dataTankLevel}*/}
-            {/*    />*/}
-            {/*</div>*/}
 
         </div>
 
