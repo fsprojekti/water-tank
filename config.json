@@ -1,54 +1,60 @@
 {
-  "render": {
-    "m2Px": 350,
-    "offsetPx": 0,
-    "canvas": { "height": 630 }
-  },
   "tank": {
-    "height": 1,
-    "area": 0.1,
-    "offsetPx": 628
-  },
-  "intake": {
-    "flow_max": 0.005
-  },
-  "drain": {
-    "valveConstant": 885.89
-  },
-  "simulation": {
-    "step": 0.1
-  },
-  "evaluationManual": {
-    "referenceLevel": 0.5
-  },
-  "evaluationMechanical": {
-    "referenceLevel": 0.5
-  },
-  "controller": {
-    "l1": 0.35,
-    "l2": 0.28,
-    "l3Default": 1.35,
-    "l4Default": 0.9,
-    "l3Limits": [
-      1,
-      1.8
-    ],
-    "l4Limits": [
-      0.4,
-      1.1
-    ],
-    "axisYGovernorPositionPx": 220,
-    "swingPointPx": [
-      460,
-      80
-    ]
+    "render": {
+      "m2Px": 350,
+      "offsetPx": 0,
+      "canvas": { "height": 630 }
+    },
+    "parameters": {
+      "height": 1.0,
+      "area": 0.1,
+      "offsetPx": 628
+    },
+    "simulation": {
+      "step": 0.1
+    }
   },
 
-  "governorYMinPx": 120,
-  "governorYMaxPx": 320,
+  "manual": {
+    "evaluation": {
+      "referenceLevel": 0.5
+    }
+  },
 
-  "pontoon": {
-    "axisXPx": 980,
-    "heightPx": 50
+  "mechanical": {
+    "hydraulics": {
+      "intake": {
+        "flow_max": 0.005
+      },
+      "drain": {
+        "valveConstant": 885.89
+      }
+    },
+    "mechanism": {
+      "controller": {
+        "l1": 0.4,
+        "l2": 0.5,
+        "axisYGovernorPositionPx": 197,
+        "swingPointPx": [460, 80],
+        "governorYMinPx": 190,
+        "governorYMaxPx": 320
+      },
+      "links": {
+        "l3Default": 1.35,
+        "l4Default": 0.9,
+        "l3Limits": [1, 1.8],
+        "l4Limits": [0.4, 1.1]
+      },
+      "pontoon": {
+        "axisXPx": 980,
+        "heightPx": 50
+      }
+    },
+    "evaluation": {
+      "referenceLevel": 0.5
+    }
+  },
+
+  "electronics": {
   }
 }

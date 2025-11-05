@@ -6,7 +6,7 @@ export default function PlantLayout({ children, width = 1500, height = 700 }) {
         <div
             className="page-center"
             style={{
-                marginTop: 10,           // space under fixed navbar
+                // marginTop: 100,           // space under fixed navbar
                 display: 'flex',
                 justifyContent: 'center'
             }}

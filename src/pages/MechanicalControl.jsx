@@ -1,7 +1,7 @@
 import {useContext} from 'react';
 import {MechanicalContext} from '../contexts/MechanicalContext.jsx';
 
-import FluidTank from '../components/FluidTank.jsx';
+import FluidTank from '../components/Tank.jsx';
 import ValveRandom from '../components/ValveRandom.jsx'; // the simple walk version you settled on
 import DisplayVar from '../components/DisplayVar.jsx';
 import DisplayVarEval from '../components/DisplayVarEval.jsx';
@@ -58,8 +58,8 @@ export default function MechanicalControl() {
         <PlantLayout>
             <div
                 style={{
-                    marginTop: 6,
-                    marginLeft: 40,
+                    marginTop: 0,
+                    marginLeft: 0,
                     height: 700,
                     width: 1500,
                     position: 'relative',
@@ -115,7 +115,16 @@ export default function MechanicalControl() {
 
                 {/* Mechanism canvas (updates governorPositionPx internally) */}
                 <div style={{position: 'absolute', top: 0, left: 0}}>
-                    <Mechanism width={1400} height={630}/>
+                    <Mechanism
+                        width={1400}
+                        height={630}
+                        config={config}
+                        tankLevel={mechanical_tankLevel}
+                        l3={l3}
+                        l4={l4}
+                        onValveChange={(pct) => setValveInpPos(pct)}     // optional
+                        style={{ pointerEvents: 'none' }}
+                    />
                 </div>
 
                 {/* Sliders for geometry */}

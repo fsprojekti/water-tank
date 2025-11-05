@@ -7,7 +7,7 @@ const toNumber = (v, fallback = 0) => {
 };
 
 /**
- * FluidTank
+ * Tank
  * Props:
  *  - flow: % (0..100)
  *  - level: % (0..100)
@@ -18,7 +18,7 @@ const toNumber = (v, fallback = 0) => {
  *  - leftOverflowDown: number (left for overflow down box)  [default 1450]
  *  - leftFlow: number (left for the intake/outlet column)   [default 590]
  */
-const FluidTank = ({
+const Tank = ({
                        flow = 0,
                        level = 0,
                        heightPx = 0,
@@ -96,4 +96,4 @@ const FluidTank = ({
 };
 
 // shallow prop memoization (re-render only if props change)
-export default React.memo(FluidTank);
+export default React.memo(Tank);
