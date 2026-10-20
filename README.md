@@ -1,70 +1,46 @@
-git add # Getting Started with Create React App
+# Water tank
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Interactive water tank level control simulation for the MKTP laboratory. Built with React and Vite.
 
-## Available Scripts
+- **Manual control**: set the intake valve by hand and keep the level at the reference (0.75 m, 120 s).
+- **Mechanical control**: a pontoon drives the intake valve through a rod linkage. Tune the horizontal and vertical rods (l3, l4) so the level settles at the reference (0.5 m, 60 s).
 
-In the project directory, you can run:
+On both pages the tank feeds a continuous drain valve and five industrial consumers (C1–C5) with different pipe diameters. The consumers switch on and off at random, so the controller has to compensate for changing demand.
 
-### `npm start`
+Each consumer needs its nominal flow, the flow at the reference level. Its label turns green when the actual flow is within 1 % of nominal, yellow within 3 % and red otherwise (`consumers.tolerance`). Poor level tracking shows up directly as consumers not getting their flow.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Each run is scored by the integral of absolute error (IAE, m·s), shown in the chart.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Model
 
-### `npm test`
+Explicit Euler with step `dt` (`config.simulation.step`):
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```
+Q_in  = Q_max · u_in / 100
+Q_out = √(2 g h) · u_out / 100 / k  +  Σ_on Cd · π d_i² / 4 · √(2 g h)
+h    += (Q_in − Q_out) · dt / A        (clamped to 0 … tank height)
+IAE  += |h_ref − h| · dt
+```
 
-### `npm run build`
+All parameters (tank geometry, flows, durations, references, linkage geometry, consumers) are in [src/config.js](src/config.js).
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The consumer on/off pattern comes from a seeded random generator (`consumers.seed`). With a fixed seed every student gets the same disturbance, so IAE results are comparable. Set it to `null` for a new pattern on every reset.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Structure
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- `src/simulation/` – pure model (`model.js`), linkage geometry (`linkage.js`), consumer schedule (`schedule.js`), state reducer (`reducer.js`) and tests
+- `src/context/` – shared state for both pages (`SimulationProvider`) and the per-page hook with the simulation loop (`useTankModel`)
+- `src/pages/` – manual and mechanical control pages
+- `src/components/` – plant shared by both pages (`TankPlant`), outlet pipes and valves (`Outlets`), sliders, canvas linkage drawing, chart
 
-### `npm run eject`
+## Scripts
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+npm install
+npm run dev       # dev server on http://localhost:3000
+npm test          # Vitest (watch mode; `npx vitest run` for a single run)
+npm run lint      # ESLint
+npm run build     # production build in build/
+npm run build:single  # one self-contained HTML file in dist-single/index.html (opens from disk, no server)
+npm run preview   # serve the production build
+```
