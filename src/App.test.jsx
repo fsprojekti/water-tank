@@ -33,8 +33,13 @@ test("runs the manual simulation and keeps state across pages", () => {
 
     fireEvent.click(screen.getByRole("button", {name: "Stop"}));
     fireEvent.click(screen.getByText("Mechanical control"));
-    expect(screen.getByText("Rod horizontal:")).toBeInTheDocument();
+    expect(screen.getByText("Rod l3:")).toBeInTheDocument();
     expect(screen.getByText(/^0\.0 \/ 60 s$/)).toBeInTheDocument();
+
+    //Grade 10 draws the integral drive next to the tank
+    fireEvent.click(screen.getByText("Grade 10"));
+    expect(screen.getByText("supply")).toBeInTheDocument();
+    expect(screen.getByText("Turbine Ki:")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Manual control"));
     expect(screen.getByText(/^1\.0 \/ 120 s$/)).toBeInTheDocument();

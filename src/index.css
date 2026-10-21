@@ -87,3 +87,23 @@ code {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+@keyframes hose-flow {
+  to { stroke-dashoffset: -16; }
+}
+
+/* Water moving through a hose or a jet */
+.hose-flow {
+  stroke-dasharray: 10 6;
+  animation: hose-flow 0.4s linear infinite;
+}
+
+.scheme-paused .hose-flow {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hose-flow {
+    animation: none;
+  }
+}

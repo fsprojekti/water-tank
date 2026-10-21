@@ -2,7 +2,9 @@ import {Button} from "react-bootstrap";
 import config from "../config";
 import {ERROR, OK, WARNING} from "../simulation/model";
 import {isFinished, modelTime, RUN, supplyRatio} from "../simulation/reducer";
-import {steadyState, targetReachedAt, timeConstant} from "../simulation/measurements";
+import {meanLevel, steadyState, targetReachedAt, timeConstant} from "../simulation/measurements";
+import {meanDemand} from "../simulation/schedule";
+import {consumerFlow} from "../simulation/model";
 import Operate from "./Operate";
 
 const supplyColors = {[OK]: "#3aa73f", [WARNING]: "#f0ad4e", [ERROR]: "#dc3545"};
@@ -29,6 +31,39 @@ const PlantMeasurements = ({model, target}) => {
     );
 };
 
+const verdictStyle = (passed) => ({
+    marginLeft: "10px",
+    padding: "0 8px",
+    borderRadius: "3px",
+    color: "white",
+    backgroundColor: passed ? "#3aa73f" : "#dc3545",
+});
+
+//Mean demand at the reference, mean level and IAE against the pass limits
+const LoadMeasurements = ({model, finished}) => {
+    const {duration, pass} = config.evaluation[model.mode];
+    const totalSteps = Math.round(duration / config.simulation.step);
+    const demand = meanDemand(model.schedule, totalSteps, model.referenceLevel,
+        (i, level) => consumerFlow(level, config.consumers.list[i].diameterMm));
+    const mean = meanLevel(model.history.level);
+    const meanOk = Math.abs(mean - model.referenceLevel) <= pass.meanTolerance;
+    const iaeLimit = pass.iaeLimit[model.referenceLevel];
+    const iaeOk = model.iae <= iaeLimit;
+    const color = (ok) => ({color: ok ? "#3aa73f" : "#dc3545"});
+    return (
+        <>
+            <Item label={"Mean demand at reference"}>{demand.toFixed(6)} m³/s</Item>
+            <Item label={`Mean level (goal ±${pass.meanTolerance * 100} cm)`}>
+                <span style={color(meanOk)}>{mean.toFixed(3)} m</span>
+            </Item>
+            <Item label={`IAE (goal ≤ ${iaeLimit})`}>
+                <span style={color(iaeOk)}>{model.iae.toFixed(2)} m·s</span>
+                {finished && <span style={verdictStyle(meanOk && iaeOk)}>{meanOk && iaeOk ? "PASSED" : "FAILED"}</span>}
+            </Item>
+        </>
+    );
+};
+
 //Steady level and time constant of the mechanical controller's step response
 const TuningMeasurements = ({model}) => {
     const steady = steadyState(model.history.level);
@@ -46,9 +81,10 @@ const TuningMeasurements = ({model}) => {
 //counting: run countdown in progress, shown as running
 const ControlBar = ({model, flows, setStatus, setInput, counting = false}) => {
     const {
-        duration, referenceLevel, referenceLabel = "Reference", showReference = true, metric, lockConsumers = false,
-        supplyTarget, consumers = true, startLevels,
+        duration, referenceLabel = "Reference", showReference = true, metric, lockConsumers = false,
+        supplyTarget, consumers = true, startLevels, references,
     } = config.evaluation[model.mode];
+    const {referenceLevel} = model;
     const time = modelTime(model);
     const finished = isFinished(model);
     const enabled = model.consumersEnabled;
@@ -85,6 +121,16 @@ const ControlBar = ({model, flows, setStatus, setInput, counting = false}) => {
                 </div>
             </Item>
 
+            {references && (
+                <Item label={"Reference"}>
+                    <select value={referenceLevel} disabled={model.step > 0}
+                            title={model.step > 0 ? "Reset to change the reference" : undefined}
+                            onChange={(event) => setInput("referenceLevel", parseFloat(event.target.value))}>
+                        {references.map((level) => <option key={level} value={level}>{level.toFixed(2)} m</option>)}
+                    </select>
+                </Item>
+            )}
+
             {startLevels && (
                 <Item label={"Start level"}>
                     <select value={model.initialLevel} disabled={model.step > 0}
@@ -102,6 +148,8 @@ const ControlBar = ({model, flows, setStatus, setInput, counting = false}) => {
             ) : <Item label={"Level"}>{model.level.toFixed(3)} m</Item>}
 
             {(metric === "iae" || metric === "supply") && <Item label={"IAE"}>{model.iae.toFixed(2)} m·s</Item>}
+
+            {(metric === "load" || metric === "pi") && <LoadMeasurements model={model} finished={finished}/>}
 
             {metric === "tuning" && <TuningMeasurements model={model}/>}
 

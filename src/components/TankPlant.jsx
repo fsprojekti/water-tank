@@ -23,6 +23,16 @@ export const FlowInfo = ({flow}) => (
     </>
 );
 
+//Page title under the run bar, e.g. "Grade 6 · Manual operator"
+const PageTitle = ({mode}) => {
+    const {grade, title} = config.evaluation[mode];
+    return (
+        <div style={{textAlign: "center", paddingTop: "6px", color: "#495057", fontSize: "18px"}}>
+            {grade && <b>Grade {grade} · </b>}{title}
+        </div>
+    );
+};
+
 //Big countdown number over the tank; clicks pass through to the valves
 const CountdownOverlay = ({count}) => (
     <div style={{
@@ -50,9 +60,10 @@ const CountdownOverlay = ({count}) => (
  */
 const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, children}) => {
     const {
-        duration, referenceLevel, referenceLabel = "Reference", showReference = true, metric,
-        drainValve = true, consumers = true,
+        duration, referenceLabel = "Reference", showReference = true, metric, drainValve = true, consumers = true,
+        levelDisplays = true,
     } = config.evaluation[model.mode];
+    const {referenceLevel} = model;
     const heightPx = config.tank.height * config.render.m2Px;
 
     const run = useCallback(() => setStatus(RUN), [setStatus]);
@@ -70,6 +81,8 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
         <>
             <ControlBar model={model} flows={flows} setStatus={changeStatus} setInput={setInput}
                         counting={countdown.count !== null}/>
+
+            <PageTitle mode={model.mode}/>
 
             <div className={"plant-layout"}>
                 <Scheme running={model.status === RUN}>
@@ -93,11 +106,13 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                                    info={<FlowInfo flow={flows.flowIn}/>}
                                    onChange={(value) => setInput("inValvePos", value)}/>
                     {children}
-                    {showReference && (
-                        <DisplayVar top={228} left={990} value={referenceLevel} unit={"m"} name={referenceLabel}
+                    {showReference && levelDisplays && (
+                        <DisplayVar top={226} left={1180} value={referenceLevel} unit={"m"} name={referenceLabel}
                                     decimal={3} variant={"reference"}/>
                     )}
-                    <DisplayVar top={228} left={1200} value={model.level} unit={"m"} name={"Level"} decimal={3}/>
+                    {levelDisplays && (
+                        <DisplayVar top={262} left={1180} value={model.level} unit={"m"} name={"Level"} decimal={3}/>
+                    )}
 
                     <Outlets showDrain={drainValve} showConsumers={consumers} drainPosition={model.outValvePos} drainFlow={flows.drain}
                              drainStemFromPx={valvePanel.leftPx + valvePanel.widthPx} enabled={model.consumersEnabled}

@@ -1,3 +1,6 @@
+//Mean level [m] of a [time, level] series
+export const meanLevel = (level) => level.reduce((sum, [, value]) => sum + value, 0) / level.length;
+
 //Steady state: level changes less than this [m] over this time window [s]
 export const steadyBandM = 0.001;
 export const steadyWindowS = 3;

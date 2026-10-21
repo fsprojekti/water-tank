@@ -1,11 +1,11 @@
 import config from "../config";
 import {consumerFlow, consumerFlows, drainFlow, ERROR, intakeFlow, nextLevel, OK, supplyStatus, WARNING} from "./model";
-import {consumerStates, createSchedule} from "./schedule";
-import {steadyState, steadyWindowS, targetReachedAt, timeConstant} from "./measurements";
+import {consumerStates, createSchedule, meanDemand} from "./schedule";
+import {meanLevel, steadyState, steadyWindowS, targetReachedAt, timeConstant} from "./measurements";
 import {governorValvePosition, mechanicalIntakePosition} from "./linkage";
 import {
     createModel, isFinished, MANUAL, MECHANICAL, modelFlows, modelReducer, modelTime, OPERATOR,
-    RESET, RUN, SET_INPUT, SET_STATUS, STOP, supplyRatio, TANK, TICK, TUNING,
+    LOAD, PI, RESET, RUN, SET_INPUT, SET_STATUS, STOP, supplyRatio, TANK, TICK, TUNING,
 } from "./reducer";
 
 //Run fn with config section[key] temporarily set to value
@@ -191,6 +191,80 @@ describe("mechanical tuning", () => {
         expect(response.t63).toBeGreaterThan(0);
         //No drain, no consumers: the level settles where the intake valve closes
         expect(modelFlows(model).flowIn).toBeCloseTo(0, 5);
+    });
+});
+
+describe("mechanical load", () => {
+    const {duration, pass} = config.evaluation[LOAD];
+    const totalSteps = duration / config.simulation.step;
+    const flowAt = (i, level) => consumerFlow(level, list[i].diameterMm);
+    const {list} = config.consumers;
+
+    const runWith = (reference, l3, l4) => {
+        let model = {...createModel(LOAD, config.consumers.seed)};
+        model = modelReducer(model, {type: SET_INPUT, name: "referenceLevel", value: reference});
+        model = modelReducer(model, {type: SET_INPUT, name: "l3", value: l3});
+        model = modelReducer(model, {type: SET_INPUT, name: "l4", value: l4});
+        return run(model, totalSteps);
+    };
+
+    test("run starts at the chosen reference, which is fixed once running", () => {
+        let model = modelReducer(createModel(LOAD), {type: SET_INPUT, name: "referenceLevel", value: 0.75});
+        expect(model.level).toBe(0.75);
+        model = run(model, 10);
+        expect(modelReducer(model, {type: SET_INPUT, name: "referenceLevel", value: 0.5}).referenceLevel).toBe(0.75);
+    });
+
+    test("mean demand at the reference grows with the reference", () => {
+        const schedule = createSchedule(config.consumers.seed, totalSteps);
+        expect(meanDemand(schedule, totalSteps, 0.75, flowAt)).toBeGreaterThan(meanDemand(schedule, totalSteps, 0.5, flowAt));
+    });
+
+    test.each([[0.5, 0.65, 1.1], [0.75, 0.55, 1.0]])("good rods pass at reference %s", (reference, l3, l4) => {
+        const model = runWith(reference, l3, l4);
+        expect(Math.abs(meanLevel(model.history.level) - reference)).toBeLessThanOrEqual(pass.meanTolerance);
+        expect(model.iae).toBeLessThanOrEqual(pass.iaeLimit[reference]);
+    });
+
+    test("rods that ignore the load drop below the reference", () => {
+        //1.0/1.0 closes the valve at ~0.5 m without load, so with consumers the level sits lower
+        const model = runWith(0.5, 1.0, 1.0);
+        expect(meanLevel(model.history.level)).toBeLessThan(0.5 - pass.meanTolerance);
+    });
+});
+
+describe("mechanical PI", () => {
+    const {duration, pass} = config.evaluation[PI];
+    const totalSteps = duration / config.simulation.step;
+    const setup = (inputs) => Object.entries(inputs).reduce(
+        (model, [name, value]) => modelReducer(model, {type: SET_INPUT, name, value}),
+        createModel(PI, config.consumers.seed));
+    const secondHalfMean = (model) => meanLevel(model.history.level.slice(totalSteps / 2));
+
+    test("turbine removes the offset that the rods alone leave", () => {
+        const withoutTurbine = run(setup({l3: 1, l4: 1, turbineGain: 0}), totalSteps);
+        const withTurbine = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), totalSteps);
+        expect(secondHalfMean(withoutTurbine)).toBeLessThan(0.45);
+        expect(secondHalfMean(withTurbine)).toBeCloseTo(0.5, 2);
+        //The turbine shortened the vertical rod to raise the closing level
+        expect(withTurbine.l4).toBeLessThan(1);
+        expect(withTurbine.history.rod.length).toBe(totalSteps);
+    });
+
+    test("passes from wrong start rods with a suitable turbine speed", () => {
+        const model = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), totalSteps);
+        expect(Math.abs(meanLevel(model.history.level) - 0.5)).toBeLessThanOrEqual(pass.meanTolerance);
+        expect(model.iae).toBeLessThanOrEqual(pass.iaeLimit[0.5]);
+    });
+
+    test("settings are locked while running and reset restores the rod", () => {
+        let model = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), 50);
+        expect(modelReducer(model, {type: SET_INPUT, name: "turbineGain", value: 3}).turbineGain).toBe(0.2);
+        expect(modelReducer(model, {type: SET_INPUT, name: "l3", value: 2}).l3).toBe(1);
+        expect(model.l4).not.toBe(1);
+        model = modelReducer(model, {type: SET_STATUS, status: RESET});
+        expect(model.l4).toBe(1);
+        expect(modelReducer(model, {type: SET_INPUT, name: "turbineGain", value: 3}).turbineGain).toBe(3);
     });
 });
 

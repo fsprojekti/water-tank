@@ -1,5 +1,5 @@
 import {createContext} from "react";
-import {createModel, MANUAL, MECHANICAL, modelReducer, OPERATOR, TANK, TUNING} from "../simulation/reducer";
+import {createModel, LOAD, MANUAL, MECHANICAL, modelReducer, OPERATOR, PI, TANK, TUNING} from "../simulation/reducer";
 
 export const SimulationContext = createContext(null);
 
@@ -11,4 +11,6 @@ export const createState = () => ({
     [OPERATOR]: createModel(OPERATOR),
     [TANK]: createModel(TANK),
     [TUNING]: createModel(TUNING),
+    [LOAD]: createModel(LOAD),
+    [PI]: createModel(PI),
 });

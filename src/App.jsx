@@ -5,6 +5,8 @@ import MechanicalControl from "./pages/MechanicalControl";
 import OperatorControl from "./pages/OperatorControl";
 import TankModel from "./pages/TankModel";
 import MechanicalTuning from "./pages/MechanicalTuning";
+import MechanicalLoad from "./pages/MechanicalLoad";
+import MechanicalPi from "./pages/MechanicalPi";
 
 function App() {
     return (
@@ -15,6 +17,8 @@ function App() {
                     <Route path="operator" element={<OperatorControl/>}/>
                     <Route path="tank" element={<TankModel/>}/>
                     <Route path="tuning" element={<MechanicalTuning/>}/>
+                    <Route path="load" element={<MechanicalLoad/>}/>
+                    <Route path="pi" element={<MechanicalPi/>}/>
                     <Route path="manual" element={<ManualControl/>}/>
                     <Route path="mechanical" element={<MechanicalControl/>}/>
                 </Route>

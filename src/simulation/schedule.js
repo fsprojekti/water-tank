@@ -120,6 +120,18 @@ export const createSchedule = (seed, totalSteps) => {
     return (patterns[config.consumers.pattern] ?? demandSchedule)(rand, totalSteps);
 };
 
+//Mean flow [m³/s] the consumers would draw over the schedule with the level held at reference [m];
+//flowAt(i, level) gives consumer i's flow when on
+export const meanDemand = (schedule, totalSteps, reference, flowAt) => {
+    let total = 0;
+    for (let step = 0; step < totalSteps; step++) {
+        schedule.forEach((intervals, i) => {
+            if (intervals.some(([on, off]) => step >= on && step < off)) total += flowAt(i, reference);
+        });
+    }
+    return total / totalSteps;
+};
+
 //On/off state of every consumer during simulation step
 export const consumerStates = (schedule, step) =>
     schedule.map((intervals) => intervals.some(([on, off]) => step >= on && step < off));

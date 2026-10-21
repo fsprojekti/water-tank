@@ -71,15 +71,18 @@ const config = {
         valveYPx: 690,
     },
     evaluation: {
+        //title: page name; grade: task the page belongs to (pages without one are free to explore)
         //Duration [s], reference level [m]; metric picks the run summary and chart: "iae", "supply" or "plant"
-        manual: {duration: 120, referenceLevel: 0.75, metric: "iae"},
+        manual: {title: "Manual control", duration: 120, referenceLevel: 0.75, metric: "iae"},
         //controller "mechanical": the pontoon linkage drives the intake valve
-        mechanical: {duration: 60, referenceLevel: 0.5, metric: "iae", controller: "mechanical"},
+        mechanical: {title: "Mechanical control", duration: 60, referenceLevel: 0.5, metric: "iae", controller: "mechanical"},
         //Grade 6 task: operator takes over a running plant and keeps consumers supplied
         operator: {
             duration: 120,
             referenceLevel: 0.75,
             metric: "supply",
+            title: "Manual operator",
+            grade: 6,
             //Run starts with the tank at this level [m]
             initialLevel: 0.75,
             //No continuous drain valve, consumers can't be disabled
@@ -95,10 +98,53 @@ const config = {
             referenceLevel: 0.75,
             referenceLabel: "Target",
             metric: "plant",
+            title: "Tank model",
+            grade: 7,
             //No consumers, only the intake and the continuous drain valve
             consumers: false,
             //Start levels to choose from [m]
             startLevels: [0, 0.25, 0.5, 0.75, 1],
+        },
+        //Grade 9 task: rods chosen once must hold the reference while consumers draw water
+        load: {
+            duration: 120,
+            //Default reference and the ones to choose from before the run [m]
+            referenceLevel: 0.5,
+            references: [0.5, 0.75],
+            //Run starts with the level at the chosen reference
+            startAtReference: true,
+            metric: "load",
+            title: "Mechanical load",
+            grade: 9,
+            controller: "mechanical",
+            //Rods and reference can't change once the run started
+            lockRods: true,
+            drainValve: false,
+            lockConsumers: true,
+            //Pass: mean level within this distance of the reference [m] and IAE below the limit per reference [m·s]
+            pass: {meanTolerance: 0.02, iaeLimit: {0.5: 3.0, 0.75: 3.5}},
+        },
+        //Grade 10 task: a turbine driven by the level error turns a screw on the vertical rod (integral action)
+        pi: {
+            title: "Mechanical PI",
+            grade: 10,
+            duration: 120,
+            referenceLevel: 0.5,
+            references: [0.5, 0.75],
+            startAtReference: true,
+            metric: "pi",
+            controller: "mechanical",
+            integral: true,
+            //The integral drive sits where the reference and level boxes are; the run bar shows both
+            levelDisplays: false,
+            lockRods: true,
+            drainValve: false,
+            lockConsumers: true,
+            //Turbine: vertical rod speed per level error Ki, range and default [1/s]; screw pitch [m per turn].
+            //Ki = unitGain · belt ratio (turbine pulley / nut pulley), so equal pulleys at Ki = unitGain
+            turbine: {gainLimits: [0.1, 3], gainInitial: 0.5, unitGain: 0.6, pitchM: 0.02},
+            //Pass: integral action removes the offset, so a tighter mean; IAE as in grade 9
+            pass: {meanTolerance: 0.01, iaeLimit: {0.5: 3.0, 0.75: 3.5}},
         },
         //Grade 8 task: rod lengths set the steady level and the speed of the mechanical controller
         tuning: {
@@ -107,6 +153,8 @@ const config = {
             referenceLevel: 0.5,
             showReference: false,
             metric: "tuning",
+            title: "Mechanical tuning",
+            grade: 8,
             controller: "mechanical",
             //Drain closed, no consumers
             drainValve: false,

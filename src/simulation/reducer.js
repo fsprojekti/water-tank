@@ -1,5 +1,5 @@
 import config from "../config";
-import {consumerFlow, consumerFlows, drainFlow, ERROR, intakeFlow, nextLevel, supplyStatus} from "./model";
+import {clamp, consumerFlow, consumerFlows, drainFlow, ERROR, intakeFlow, nextLevel, supplyStatus} from "./model";
 import {mechanicalIntakePosition} from "./linkage";
 import {consumerStates, createSchedule, nextSeed} from "./schedule";
 
@@ -8,6 +8,8 @@ export const MECHANICAL = "mechanical";
 export const OPERATOR = "operator";
 export const TANK = "tank";
 export const TUNING = "tuning";
+export const LOAD = "load";
+export const PI = "pi";
 
 //Pages where the pontoon linkage drives the intake valve
 export const isMechanical = (mode) => config.evaluation[mode].controller === "mechanical";
@@ -46,8 +48,7 @@ export const modelFlows = (model) => {
     const drain = drainFlow(model.level, model.outValvePos);
     const consumersTotal = sum(consumers);
     //Nominal consumer flow is the flow at the reference level
-    const {referenceLevel} = config.evaluation[model.mode];
-    const nominal = config.consumers.list.map((consumer) => consumerFlow(referenceLevel, consumer.diameterMm));
+    const nominal = config.consumers.list.map((consumer) => consumerFlow(model.referenceLevel, consumer.diameterMm));
     return {
         inValvePos,
         flowIn: intakeFlow(inValvePos),
@@ -62,8 +63,8 @@ export const modelFlows = (model) => {
     };
 };
 
-//New run from the start level [m]
-const freshRun = (mode, seed, level) => {
+//New run from the start level [m] towards the reference [m]
+const freshRun = (mode, seed, level, reference) => {
     return {
         seed,
         schedule: createSchedule(seed, totalSteps(mode)),
@@ -81,25 +82,30 @@ const freshRun = (mode, seed, level) => {
             drain: [[0, 0]],
             consumers: [[0, 0]],
             //Level error h_ref - h [m]
-            deviation: [[0, config.evaluation[mode].referenceLevel - level]],
+            deviation: [[0, reference - level]],
+            //Vertical rod moved by the turbine [m]
+            rod: [],
         },
     };
 };
 
 export const createModel = (mode, seed = nextSeed()) => {
-    const {initialLevel = 0, consumers = true} = config.evaluation[mode];
+    const {referenceLevel, startAtReference = false, consumers = true} = config.evaluation[mode];
+    const initialLevel = startAtReference ? referenceLevel : config.evaluation[mode].initialLevel ?? 0;
     return {
         mode,
         status: STOP,
         outValvePos: 0,
         //A page without consumers keeps them all disabled
         consumersEnabled: config.consumers.list.map(() => consumers),
-        //Level a run starts from [m]
+        //Level a run starts from and the reference it aims at [m]
         initialLevel,
+        referenceLevel,
         ...(isMechanical(mode)
-            ? {l3: config.controller.l3Initial, l4: config.controller.l4Initial}
+            ? {l3: config.controller.l3Initial, l4: config.controller.l4Initial, l4Start: config.controller.l4Initial}
             : {inValvePos: 0}),
-        ...freshRun(mode, seed, initialLevel),
+        ...(config.evaluation[mode].integral && {turbineGain: config.evaluation[mode].turbine.gainInitial}),
+        ...freshRun(mode, seed, initialLevel, referenceLevel),
     };
 };
 
@@ -107,7 +113,7 @@ const append = (series, time, value) => [...series, [time, value]];
 
 const tick = (model) => {
     const dt = config.simulation.step;
-    const {referenceLevel} = config.evaluation[model.mode];
+    const {referenceLevel} = model;
 
     const flows = modelFlows(model);
     const level = nextLevel(model.level, flows.flowIn, flows.flowOut, dt);
@@ -120,6 +126,11 @@ const tick = (model) => {
     };
 
     const next = {...model, step: model.step + 1, level, iae, supply};
+    //Turbine turns while there is an error: shorter vertical rod raises the level where the valve closes
+    if (config.evaluation[model.mode].integral) {
+        const [min, max] = config.controller.l4Limits;
+        next.l4 = clamp(model.l4 - model.turbineGain * (referenceLevel - level) * dt, min, max);
+    }
     const time = modelTime(next);
     const {history} = model;
     next.history = {
@@ -129,9 +140,13 @@ const tick = (model) => {
         drain: append(history.drain, time, flows.drain),
         consumers: append(history.consumers, time, flows.consumersTotal),
         deviation: append(history.deviation, time, referenceLevel - level),
+        rod: config.evaluation[model.mode].integral ? append(history.rod, time, next.l4) : history.rod,
     };
     return isFinished(next) ? {...next, status: STOP} : next;
 };
+
+//Settings fixed during a run on pages with lockRods
+const lockedInputs = ["l3", "l4", "turbineGain", "referenceLevel"];
 
 export const modelReducer = (model, action) => {
     switch (action.type) {
@@ -139,14 +154,41 @@ export const modelReducer = (model, action) => {
             return model.status === RUN ? tick(model) : model;
         case SET_STATUS:
             if (action.status === RESET) {
-                return {...model, ...freshRun(model.mode, action.seed ?? model.seed, model.initialLevel), status: RESET};
+                return {
+                    ...model,
+                    ...freshRun(model.mode, action.seed ?? model.seed, model.initialLevel, model.referenceLevel),
+                    //The turbine moved the vertical rod; put it back where the student set it
+                    ...(config.evaluation[model.mode].integral && {l4: model.l4Start}),
+                    status: RESET,
+                };
             }
             if (action.status === RUN && isFinished(model)) return model;
             return {...model, status: action.status};
         case SET_INPUT:
+            //Locked settings can't change once the run started
+            if (config.evaluation[model.mode].lockRods && model.step > 0 && lockedInputs.includes(action.name)) {
+                return model;
+            }
+            //Where the student sets the vertical rod is where a reset puts it back
+            if (action.name === "l4") return {...model, l4: action.value, l4Start: action.value};
             //A new start level applies right away while the run has not started
             if (action.name === "initialLevel" && model.step === 0) {
-                return {...model, initialLevel: action.value, ...freshRun(model.mode, model.seed, action.value)};
+                return {
+                    ...model,
+                    initialLevel: action.value,
+                    ...freshRun(model.mode, model.seed, action.value, model.referenceLevel),
+                };
+            }
+            //A new reference applies before the run; pages starting at the reference start from the new one
+            if (action.name === "referenceLevel") {
+                if (model.step > 0) return model;
+                const start = config.evaluation[model.mode].startAtReference ? action.value : model.initialLevel;
+                return {
+                    ...model,
+                    referenceLevel: action.value,
+                    initialLevel: start,
+                    ...freshRun(model.mode, model.seed, start, action.value),
+                };
             }
             return {...model, [action.name]: action.value};
         default:
