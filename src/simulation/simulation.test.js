@@ -2,7 +2,7 @@ import config from "../config";
 import {consumerFlow, consumerFlows, drainFlow, ERROR, intakeFlow, nextLevel, OK, supplyStatus, WARNING} from "./model";
 import {consumerStates, createSchedule, meanDemand} from "./schedule";
 import {meanLevel, steadyState, steadyWindowS, targetReachedAt, timeConstant} from "./measurements";
-import {governorValvePosition, mechanicalIntakePosition} from "./linkage";
+import {beltRatio, proportionalIntakePosition} from "./controller";
 import {
     createModel, isFinished, MANUAL, MECHANICAL, modelFlows, modelReducer, modelTime, OPERATOR,
     LOAD, PI, RESET, RUN, SET_INPUT, SET_STATUS, STOP, supplyRatio, TANK, TICK, TUNING,
@@ -179,16 +179,21 @@ describe("tank model", () => {
     });
 });
 
+//Model with inputs set one by one
+const setup = (mode, inputs) => Object.entries(inputs).reduce(
+    (model, [name, value]) => modelReducer(model, {type: SET_INPUT, name, value}),
+    createModel(mode, config.consumers.seed));
+
+//Gain of the whole loop: intake flow per metre of level below h0 [m²/s]
+const loopGain = (kp) => config.intake.flowMax * kp;
+
 describe("mechanical tuning", () => {
-    test("rods set the steady level of the unloaded tank", () => {
-        let model = createModel(TUNING);
+    test("unloaded tank settles at h0 with the time constant A / (Qmax kp)", () => {
+        const model = run(setup(TUNING, {kp: 2, h0: 0.5}), 400);
         expect(model.consumersEnabled.every((enabled) => !enabled)).toBe(true);
-        model = modelReducer(model, {type: SET_INPUT, name: "l3", value: 1});
-        model = modelReducer(model, {type: SET_INPUT, name: "l4", value: 1});
-        model = run(model, 400);
         const response = timeConstant(model.history.level);
-        expect(response.steady.level).toBeCloseTo(0.5, 1);
-        expect(response.t63).toBeGreaterThan(0);
+        expect(response.steady.level).toBeCloseTo(0.5, 2);
+        expect(response.t63).toBeCloseTo(config.tank.area / loopGain(2), 0);
         //No drain, no consumers: the level settles where the intake valve closes
         expect(modelFlows(model).flowIn).toBeCloseTo(0, 5);
     });
@@ -197,16 +202,9 @@ describe("mechanical tuning", () => {
 describe("mechanical load", () => {
     const {duration, pass} = config.evaluation[LOAD];
     const totalSteps = duration / config.simulation.step;
-    const flowAt = (i, level) => consumerFlow(level, list[i].diameterMm);
     const {list} = config.consumers;
-
-    const runWith = (reference, l3, l4) => {
-        let model = {...createModel(LOAD, config.consumers.seed)};
-        model = modelReducer(model, {type: SET_INPUT, name: "referenceLevel", value: reference});
-        model = modelReducer(model, {type: SET_INPUT, name: "l3", value: l3});
-        model = modelReducer(model, {type: SET_INPUT, name: "l4", value: l4});
-        return run(model, totalSteps);
-    };
+    const flowAt = (i, level) => consumerFlow(level, list[i].diameterMm);
+    const runWith = (reference, kp, h0) => run(setup(LOAD, {referenceLevel: reference, kp, h0}), totalSteps);
 
     test("run starts at the chosen reference, which is fixed once running", () => {
         let model = modelReducer(createModel(LOAD), {type: SET_INPUT, name: "referenceLevel", value: 0.75});
@@ -220,15 +218,22 @@ describe("mechanical load", () => {
         expect(meanDemand(schedule, totalSteps, 0.75, flowAt)).toBeGreaterThan(meanDemand(schedule, totalSteps, 0.5, flowAt));
     });
 
-    test.each([[0.5, 0.65, 1.1], [0.75, 0.55, 1.0]])("good rods pass at reference %s", (reference, l3, l4) => {
-        const model = runWith(reference, l3, l4);
+    test("level sits below h0 by the mean demand over the loop gain", () => {
+        const schedule = createSchedule(config.consumers.seed, totalSteps);
+        const kp = 5;
+        const model = runWith(0.5, kp, 0.5);
+        const expected = 0.5 - meanDemand(schedule, totalSteps, 0.5, flowAt) / loopGain(kp);
+        expect(meanLevel(model.history.level)).toBeCloseTo(expected, 2);
+    });
+
+    test.each([[0.5, 10, 0.53], [0.75, 10, 0.78]])("compensated h0 passes at reference %s", (reference, kp, h0) => {
+        const model = runWith(reference, kp, h0);
         expect(Math.abs(meanLevel(model.history.level) - reference)).toBeLessThanOrEqual(pass.meanTolerance);
         expect(model.iae).toBeLessThanOrEqual(pass.iaeLimit[reference]);
     });
 
-    test("rods that ignore the load drop below the reference", () => {
-        //1.0/1.0 closes the valve at ~0.5 m without load, so with consumers the level sits lower
-        const model = runWith(0.5, 1.0, 1.0);
+    test("h0 at the reference ignores the load and misses it", () => {
+        const model = runWith(0.5, 10, 0.5);
         expect(meanLevel(model.history.level)).toBeLessThan(0.5 - pass.meanTolerance);
     });
 });
@@ -236,34 +241,30 @@ describe("mechanical load", () => {
 describe("mechanical PI", () => {
     const {duration, pass} = config.evaluation[PI];
     const totalSteps = duration / config.simulation.step;
-    const setup = (inputs) => Object.entries(inputs).reduce(
-        (model, [name, value]) => modelReducer(model, {type: SET_INPUT, name, value}),
-        createModel(PI, config.consumers.seed));
     const secondHalfMean = (model) => meanLevel(model.history.level.slice(totalSteps / 2));
 
-    test("turbine removes the offset that the rods alone leave", () => {
-        const withoutTurbine = run(setup({l3: 1, l4: 1, turbineGain: 0}), totalSteps);
-        const withTurbine = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), totalSteps);
+    test("turbine removes the offset by raising h0", () => {
+        const withoutTurbine = run(setup(PI, {kp: 2, h0: 0.5, turbineGain: 0}), totalSteps);
+        const withTurbine = run(setup(PI, {kp: 2, h0: 0.5, turbineGain: 0.3}), totalSteps);
         expect(secondHalfMean(withoutTurbine)).toBeLessThan(0.45);
         expect(secondHalfMean(withTurbine)).toBeCloseTo(0.5, 2);
-        //The turbine shortened the vertical rod to raise the closing level
-        expect(withTurbine.l4).toBeLessThan(1);
-        expect(withTurbine.history.rod.length).toBe(totalSteps);
+        expect(withTurbine.h0).toBeGreaterThan(0.55);
+        expect(withTurbine.history.setLevel.length).toBe(totalSteps);
     });
 
-    test("passes from wrong start rods with a suitable turbine speed", () => {
-        const model = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), totalSteps);
+    test("good gain and turbine speed pass", () => {
+        const model = run(setup(PI, {kp: 10, h0: 0.55, turbineGain: 1}), totalSteps);
         expect(Math.abs(meanLevel(model.history.level) - 0.5)).toBeLessThanOrEqual(pass.meanTolerance);
         expect(model.iae).toBeLessThanOrEqual(pass.iaeLimit[0.5]);
     });
 
-    test("settings are locked while running and reset restores the rod", () => {
-        let model = run(setup({l3: 1, l4: 1, turbineGain: 0.2}), 50);
-        expect(modelReducer(model, {type: SET_INPUT, name: "turbineGain", value: 3}).turbineGain).toBe(0.2);
-        expect(modelReducer(model, {type: SET_INPUT, name: "l3", value: 2}).l3).toBe(1);
-        expect(model.l4).not.toBe(1);
+    test("settings are locked while running and reset restores h0", () => {
+        let model = run(setup(PI, {kp: 2, h0: 0.5, turbineGain: 0.3}), 50);
+        expect(modelReducer(model, {type: SET_INPUT, name: "turbineGain", value: 3}).turbineGain).toBe(0.3);
+        expect(modelReducer(model, {type: SET_INPUT, name: "kp", value: 8}).kp).toBe(2);
+        expect(model.h0).not.toBe(0.5);
         model = modelReducer(model, {type: SET_STATUS, status: RESET});
-        expect(model.l4).toBe(1);
+        expect(model.h0).toBe(0.5);
         expect(modelReducer(model, {type: SET_INPUT, name: "turbineGain", value: 3}).turbineGain).toBe(3);
     });
 });
@@ -297,25 +298,19 @@ describe("measurements", () => {
     });
 });
 
-describe("linkage", () => {
-    test("governor maps closed/open positions to 0/100 %", () => {
-        expect(governorValvePosition(config.controller.governorClosedPx)).toBe(0);
-        expect(governorValvePosition(config.controller.governorOpenPx)).toBe(100);
-        expect(governorValvePosition(150)).toBe(50);
+describe("rack and pinion controller", () => {
+    test("valve is closed at and above h0 and opens in proportion below it", () => {
+        expect(proportionalIntakePosition(0.5, 4, 0.5)).toBe(0);
+        expect(proportionalIntakePosition(0.7, 4, 0.5)).toBe(0);
+        expect(proportionalIntakePosition(0.4, 4, 0.5)).toBeCloseTo(40);
+        expect(proportionalIntakePosition(0.2, 4, 0.5)).toBe(100);
     });
 
-    test("rising level closes the intake valve", () => {
-        const positions = [0.3, 0.5, 0.7].map((level) => mechanicalIntakePosition(level, 0.85, 1));
-        expect(positions[0]).toBeGreaterThan(positions[1]);
-        expect(positions[1]).toBeGreaterThan(positions[2]);
-    });
-
-    test("pontoon hangs on the rods above an empty tank and keeps the valve open", () => {
-        expect(mechanicalIntakePosition(0, 0.85, 1)).toBe(100);
-    });
-
-    test("unreachable linkage closes the valve", () => {
-        expect(mechanicalIntakePosition(0.5, 0.5, 0.5)).toBe(0);
+    test("belt ratio grows with the gain", () => {
+        expect(beltRatio(2)).toBeCloseTo(2 * beltRatio(1));
+        //A quarter turn of the valve at full opening: pinion turn (1/kp)/r times the ratio is π/2
+        const kp = 4;
+        expect((1 / kp) / config.controller.pinionRadiusM * beltRatio(kp)).toBeCloseTo(Math.PI / 2);
     });
 });
 

@@ -105,7 +105,7 @@ const config = {
             //Start levels to choose from [m]
             startLevels: [0, 0.25, 0.5, 0.75, 1],
         },
-        //Grade 9 task: rods chosen once must hold the reference while consumers draw water
+        //Grade 9 task: gain and closing level chosen once must hold the reference while consumers draw water
         load: {
             duration: 120,
             //Default reference and the ones to choose from before the run [m]
@@ -117,14 +117,14 @@ const config = {
             title: "Mechanical load",
             grade: 9,
             controller: "mechanical",
-            //Rods and reference can't change once the run started
-            lockRods: true,
+            //Settings and reference can't change once the run started
+            lockSettings: true,
             drainValve: false,
             lockConsumers: true,
             //Pass: mean level within this distance of the reference [m] and IAE below the limit per reference [m·s]
-            pass: {meanTolerance: 0.02, iaeLimit: {0.5: 3.0, 0.75: 3.5}},
+            pass: {meanTolerance: 0.02, iaeLimit: {0.5: 2.0, 0.75: 2.5}},
         },
-        //Grade 10 task: a turbine driven by the level error turns a screw on the vertical rod (integral action)
+        //Grade 10 task: a turbine driven by the level error moves the carriage, so h0 follows the error (integral)
         pi: {
             title: "Mechanical PI",
             grade: 10,
@@ -135,21 +135,19 @@ const config = {
             metric: "pi",
             controller: "mechanical",
             integral: true,
-            //The integral drive sits where the reference and level boxes are; the run bar shows both
-            levelDisplays: false,
-            lockRods: true,
+            lockSettings: true,
             drainValve: false,
             lockConsumers: true,
-            //Turbine: vertical rod speed per level error Ki, range and default [1/s]; screw pitch [m per turn].
-            //Ki = unitGain · belt ratio (turbine pulley / nut pulley), so equal pulleys at Ki = unitGain
+            //Turbine: carriage speed per level error Ki, range and default [1/s]; screw pitch [m per turn].
+            //Ki = unitGain · belt ratio (turbine pulley / carriage screw pulley), so equal pulleys at Ki = unitGain
             turbine: {gainLimits: [0.1, 3], gainInitial: 0.5, unitGain: 0.6, pitchM: 0.02},
-            //Pass: integral action removes the offset, so a tighter mean; IAE as in grade 9
-            pass: {meanTolerance: 0.01, iaeLimit: {0.5: 3.0, 0.75: 3.5}},
+            //Pass: integral action removes the offset, so a tighter mean and IAE than in grade 9
+            pass: {meanTolerance: 0.01, iaeLimit: {0.5: 1.2, 0.75: 1.5}},
         },
-        //Grade 8 task: rod lengths set the steady level and the speed of the mechanical controller
+        //Grade 8 task: gain and closing level set the steady level and the speed of the mechanical controller
         tuning: {
             duration: 60,
-            //Not a task target; the rods set where the level settles
+            //Not a task target; h0 sets where the level settles
             referenceLevel: 0.5,
             showReference: false,
             metric: "tuning",
@@ -168,33 +166,23 @@ const config = {
         viewPx: {left: 220, right: 1470},
         //Valve panels under the intake and drain valves [Px]
         valvePanel: {leftPx: 226, widthPx: 180, intakeTopPx: 363},
-        canvas: {
-            width: 1400,
-            height: 630,
-        },
     },
     controller: {
-        //Construction [m]
-        l1: 0.4,
-        l2: 0.5,
-        //Adjustable rods: limits and initial lengths [m]
-        l3Limits: [0.5, 3],
-        l4Limits: [0.5, 3],
-        l3Initial: 1.3,
-        l4Initial: 1.45,
-        //Governor rod x axis [Px]
-        governorAxisXPx: 317,
-        //Governor y position for closed / fully open intake valve [Px]
-        governorClosedPx: 190,
-        governorOpenPx: 110,
-        //Swing point [Px]
-        swingPointPx: [580, 80],
+        //Mechanical P controller: rack on the pontoon, pinion on a carriage, belt to the intake valve.
+        //Gain kp: valve opening per metre of level below h0 [1/m]; h0: level where the valve closes,
+        //set by the carriage height [m]
+        kpLimits: [1, 10],
+        kpInitial: 2,
+        h0Limits: [0.1, 1],
+        h0Initial: 0.4,
+        //Pinion radius [m]; with it the belt ratio follows from kp
+        pinionRadiusM: 0.1,
     },
     pontoon: {
         //[Px]
         widthPx: 250,
         heightPx: 50,
-        axisXPx: 1050,
+        axisXPx: 760,
     },
 };
 

@@ -61,7 +61,6 @@ const CountdownOverlay = ({count}) => (
 const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, children}) => {
     const {
         duration, referenceLabel = "Reference", showReference = true, metric, drainValve = true, consumers = true,
-        levelDisplays = true,
     } = config.evaluation[model.mode];
     const {referenceLevel} = model;
     const heightPx = config.tank.height * config.render.m2Px;
@@ -106,13 +105,11 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                                    info={<FlowInfo flow={flows.flowIn}/>}
                                    onChange={(value) => setInput("inValvePos", value)}/>
                     {children}
-                    {showReference && levelDisplays && (
+                    {showReference && (
                         <DisplayVar top={226} left={1180} value={referenceLevel} unit={"m"} name={referenceLabel}
                                     decimal={3} variant={"reference"}/>
                     )}
-                    {levelDisplays && (
-                        <DisplayVar top={262} left={1180} value={model.level} unit={"m"} name={"Level"} decimal={3}/>
-                    )}
+                    <DisplayVar top={262} left={1180} value={model.level} unit={"m"} name={"Level"} decimal={3}/>
 
                     <Outlets showDrain={drainValve} showConsumers={consumers} drainPosition={model.outValvePos} drainFlow={flows.drain}
                              drainStemFromPx={valvePanel.leftPx + valvePanel.widthPx} enabled={model.consumersEnabled}

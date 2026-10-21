@@ -17,7 +17,7 @@ const colors = {
     intake: "#3aa73f",
     drain: "#1c6693",
     consumers: "#d54436",
-    rod: "#00897b",
+    setLevel: "#00897b",
 };
 
 const minHeightPx = 480;
@@ -119,7 +119,7 @@ const tuningOption = () => ({
     ],
 });
 
-//As iae, with the vertical rod moved by the turbine next to the flows
+//As iae, with the closing level h0 moved by the turbine next to the flows
 const piOption = (showDrain, showConsumers) => {
     const option = iaeOption(showDrain, showConsumers);
     return {
@@ -127,12 +127,12 @@ const piOption = (showDrain, showConsumers) => {
         yAxis: [
             ...option.yAxis,
             {
-                type: "value", gridIndex: 1, name: "Rod vertical [m]",
+                type: "value", gridIndex: 1, name: "h0 [m]",
                 splitLine: {show: false},
-                axisLine: {show: true, lineStyle: {color: colors.rod}},
+                axisLine: {show: true, lineStyle: {color: colors.setLevel}},
             },
         ],
-        series: [...option.series, line("rod", "Rod vertical", colors.rod, {xAxisIndex: 1, yAxisIndex: 3})],
+        series: [...option.series, line("setLevel", "h0", colors.setLevel, {xAxisIndex: 1, yAxisIndex: 3})],
     };
 };
 
@@ -232,7 +232,7 @@ const Chart = ({history, reference, duration, metric = "iae", showDrain = true, 
         const reached = metric === "plant" ? targetReachedAt(history.level, reference) : null;
         const response = metric === "tuning" ? timeConstant(history.level) : null;
         const series = {
-            pi: () => [...levels, {id: "error", data: history.error}, ...flows, {id: "rod", data: history.rod}],
+            pi: () => [...levels, {id: "error", data: history.error}, ...flows, {id: "setLevel", data: history.setLevel}],
             load: () => [...levels, {id: "error", data: history.error}, ...flows],
             tuning: () => [
                 {

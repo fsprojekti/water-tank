@@ -1,45 +1,57 @@
 import config from "../config";
 import {useTankModel} from "../context/useTankModel";
-import {modelFlows} from "../simulation/reducer";
+import {intakePosition, modelFlows} from "../simulation/reducer";
+import {beltRatio} from "../simulation/controller";
 import ControlSlider from "./ControlSlider";
-import Canvas from "./Canvas";
+import RackDrive from "./RackDrive";
 import IntegralDrive from "./IntegralDrive";
 import TankPlant from "./TankPlant";
 
-const {l3Limits, l4Limits} = config.controller;
+const {kpLimits, h0Limits} = config.controller;
 //Settings panels under the intake valve panel, top of each [Px]
 const {valvePanel} = config.render;
-const settingsTopPx = [448, 516, 584];
+const settingsTopPx = [450, 540, 614];
 
-//Tank driven by the mechanical controller: pontoon linkage with adjustable rods
+//Second line of a settings panel
+const Info = ({label, value}) => (
+    <>
+        <span>{label}</span>
+        <span>{value}</span>
+    </>
+);
+
+//Tank driven by the mechanical controller: rack on the pontoon, pinion on a carriage, belt to the intake valve
 const MechanicalPlant = ({mode}) => {
     const {model, setStatus, setInput} = useTankModel(mode);
     const flows = modelFlows(model);
-    //Some tasks fix the rods once the run started
-    const rodsLocked = Boolean(config.evaluation[mode].lockRods) && model.step > 0;
-    const {integral, turbine} = config.evaluation[mode];
+    const {integral, turbine, lockSettings} = config.evaluation[mode];
+    //Some tasks fix the settings once the run started
+    const locked = Boolean(lockSettings) && model.step > 0;
 
     return (
         <TankPlant model={model} flows={flows} setStatus={setStatus} setInput={setInput} intakeAuto>
-            <Canvas level={model.level} l3={model.l3} l4={model.l4}/>
+            <RackDrive level={model.level} kp={model.kp} h0={model.h0} opening={intakePosition(model)}
+                       crank={!integral}/>
             {integral && (
-                <IntegralDrive level={model.level} l3={model.l3} l4={model.l4} reference={model.referenceLevel}
+                <IntegralDrive level={model.level} h0={model.h0} reference={model.referenceLevel}
                                pitch={turbine.pitchM} gain={model.turbineGain} unitGain={turbine.unitGain}/>
             )}
             <ControlSlider top={settingsTopPx[0]} left={valvePanel.leftPx} width={valvePanel.widthPx}
-                           label={"Rod l3"} unit={"m"} decimals={2}
-                           min={l3Limits[0]} max={l3Limits[1]} step={0.01}
-                           value={model.l3} disabled={rodsLocked} onChange={(value) => setInput("l3", value)}/>
+                           label={"Gain Kp"} unit={"1/m"} decimals={1}
+                           min={kpLimits[0]} max={kpLimits[1]} step={0.1}
+                           info={<Info label={"Belt ratio:"} value={`${beltRatio(model.kp).toFixed(2)} : 1`}/>}
+                           value={model.kp} disabled={locked} onChange={(value) => setInput("kp", value)}/>
             <ControlSlider top={settingsTopPx[1]} left={valvePanel.leftPx} width={valvePanel.widthPx}
-                           label={"Rod l4"} unit={"m"} decimals={2}
-                           min={l4Limits[0]} max={l4Limits[1]} step={0.01}
-                           value={model.l4} disabled={rodsLocked} onChange={(value) => setInput("l4", value)}/>
+                           label={integral ? "Start h0" : "Close at h0"} unit={"m"} decimals={2}
+                           min={h0Limits[0]} max={h0Limits[1]} step={0.01}
+                           value={model.h0} disabled={locked} onChange={(value) => setInput("h0", value)}/>
             {integral && (
                 <ControlSlider top={settingsTopPx[2]} left={valvePanel.leftPx} width={valvePanel.widthPx}
                                label={"Turbine Ki"} unit={"1/s"} decimals={2}
                                min={turbine.gainLimits[0]} max={turbine.gainLimits[1]} step={0.05}
-                               value={model.turbineGain} disabled={rodsLocked}
-                               info={<><span>Belt ratio:</span><span>{(model.turbineGain / turbine.unitGain).toFixed(2)} : 1</span></>}
+                               info={<Info label={"Belt ratio:"}
+                                           value={`${(model.turbineGain / turbine.unitGain).toFixed(2)} : 1`}/>}
+                               value={model.turbineGain} disabled={locked}
                                onChange={(value) => setInput("turbineGain", value)}/>
             )}
         </TankPlant>
