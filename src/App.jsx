@@ -1,4 +1,4 @@
-import {HashRouter, Route, Routes} from "react-router-dom";
+import {HashRouter, Navigate, Route, Routes} from "react-router-dom";
 import Layout from "./Layout";
 import ManualControl from "./pages/ManualControl";
 import MechanicalControl from "./pages/MechanicalControl";
@@ -7,13 +7,15 @@ import TankModel from "./pages/TankModel";
 import MechanicalTuning from "./pages/MechanicalTuning";
 import MechanicalLoad from "./pages/MechanicalLoad";
 import MechanicalPi from "./pages/MechanicalPi";
+import LabPage from "./pages/LabPage";
 
 function App() {
     return (
         <HashRouter>
             <Routes>
+                <Route path="/" element={<Navigate to="/vaja/6" replace/>}/>
+                <Route path="/vaja/:grade" element={<LabPage/>}/>
                 <Route path="/" element={<Layout/>}>
-                    <Route index element={<ManualControl/>}/>
                     <Route path="operator" element={<OperatorControl/>}/>
                     <Route path="tank" element={<TankModel/>}/>
                     <Route path="tuning" element={<MechanicalTuning/>}/>

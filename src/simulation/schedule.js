@@ -1,4 +1,5 @@
 import config from "../config";
+import {labDrain} from "../labConfig";
 
 //Small seeded PRNG (mulberry32), returns floats in [0, 1)
 export const random = (seed) => {
@@ -135,3 +136,23 @@ export const meanDemand = (schedule, totalSteps, reference, flowAt) => {
 //On/off state of every consumer during simulation step
 export const consumerStates = (schedule, step) =>
     schedule.map((intervals) => intervals.some(([on, off]) => step >= on && step < off));
+
+//Piecewise constant opening of the same drain valve used in the fixed-load experiments.
+//[step, opening in percent]; no repeated neighbouring values and no closed-valve intervals.
+export const createDrainSchedule = (seed, totalSteps) => {
+    const rand = random(seed);
+    const schedule = [[0, labDrain.initialOpening]];
+    let step = Math.round(labDrain.initialSeconds / config.simulation.step);
+    //Leave a final constant-load interval so the final error measures settling, not a fresh disturbance.
+    const lastChange = totalSteps - Math.round(labDrain.settlingSeconds / config.simulation.step);
+    while (step < lastChange) {
+        const previous = schedule[schedule.length - 1][1];
+        const choices = labDrain.openings.filter((opening) => opening !== previous);
+        schedule.push([step, choices[Math.floor(rand() * choices.length)]]);
+        step += Math.max(1, stepsIn(rand, labDrain.holdSeconds));
+    }
+    return schedule;
+};
+
+export const drainOpeningAt = (schedule, step) =>
+    schedule.findLast(([start]) => start <= step)[1];

@@ -16,10 +16,11 @@ const maxScale = 1.3;
  * The shown part of the scheme is scaled to fit its column and the window height.
  * Water animations are frozen while not running.
  */
-const Scheme = ({children, running}) => {
+const Scheme = ({children, running, heightLimit}) => {
     const ref = useRef(null);
     const {width, height} = useAvailableSize(ref);
-    const scale = width > 0 ? Math.max(0.3, Math.min(maxScale, width / viewWidthPx, height / heightPx)) : 1;
+    const scale = width > 0 ? Math.max(heightLimit ? 0.15 : 0.3,
+        Math.min(maxScale, width / viewWidthPx, (heightLimit ?? height) / heightPx)) : 1;
 
     return (
         <div ref={ref} style={{height: heightPx * scale}}>

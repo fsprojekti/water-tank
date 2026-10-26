@@ -1,3 +1,5 @@
+import {labTasks} from "./labConfig";
+
 const config = {
     tank: {
         //Tank height [m]
@@ -177,6 +179,9 @@ const config = {
         h0Initial: 0.4,
         //Pinion radius [m]; with it the belt ratio follows from kp
         pinionRadiusM: 0.1,
+        //Fixed open-belt reduction: half a turn at the input gives the valve's quarter turn.
+        //Pulley radii [m], no student adjustment; the Kp belt calculation includes this stage.
+        valveDrive: {drivingRadiusM: 0.04, drivenRadiusM: 0.08},
     },
     pontoon: {
         //[Px]
@@ -185,5 +190,9 @@ const config = {
         axisXPx: 760,
     },
 };
+
+for (const task of labTasks) {
+    config.evaluation[task.mode] = {title: task.title, grade: task.grade, lab: true, lockSettings: true, ...task.evaluation};
+}
 
 export default config;

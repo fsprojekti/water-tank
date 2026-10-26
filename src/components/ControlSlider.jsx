@@ -25,6 +25,7 @@ const ControlSlider = ({
         </div>
         {info && <div className={"d-flex justify-content-between"} style={{fontSize: "14px"}}>{info}</div>}
         <RangeSlider
+            aria-label={label}
             value={value}
             tooltip={"off"}
             disabled={disabled}

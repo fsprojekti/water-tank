@@ -8,5 +8,9 @@ import {clamp} from "./model";
  */
 export const proportionalIntakePosition = (level, kp, h0) => clamp(kp * (h0 - level), 0, 1) * 100;
 
-//Belt ratio (pinion pulley : valve pulley) for gain kp: the pinion turns by Δh / r, a quarter turn opens the valve
-export const beltRatio = (kp) => kp * config.controller.pinionRadiusM * Math.PI / 2;
+//Fixed valve/input angular ratio; the open belt preserves the rotation direction.
+export const valveDriveRatio = () =>
+    config.controller.valveDrive.drivingRadiusM / config.controller.valveDrive.drivenRadiusM;
+
+//Adjustable belt ratio: compensate for the fixed reduction so Δh = 1/kp still opens the valve by π/2.
+export const beltRatio = (kp) => kp * config.controller.pinionRadiusM * Math.PI / 2 / valveDriveRatio();

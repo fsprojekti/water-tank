@@ -2,6 +2,7 @@ import config from "../config";
 import colors from "./pipeColors";
 import {BeltSpans, Pulley} from "./mechanismParts";
 import {beltPulleys, pontoonTopPx, rackGeometry} from "./mechanismGeometry";
+import {valveDriveRatio} from "../simulation/controller";
 
 const hoseIdle = "#9aa5b1";
 
@@ -63,21 +64,28 @@ const Jet = ({y}) => (
  * which raises or lowers the carriage, i.e. the closing level h0. The pulley sizes show the belt ratio that sets Ki;
  * the wheel and screw angles follow h0 (screw pitch [m per turn]).
  */
-const IntegralDrive = ({level, h0, reference, pitch, gain, unitGain}) => {
+const IntegralDrive = ({level, h0, reference, pitch, gain, unitGain, directOpening, deadband = deadbandM,
+    label = "Pilotni ventil in turbina"}) => {
     const {pontoon, render, tank} = config;
+    const direct = directOpening !== undefined;
 
     //Pilot valve sits where the pontoon middle is when the level equals the reference
     const pilotY = tank.offsetPx - reference * render.m2Px - pontoon.heightPx / 2;
     const pontoonMiddle = pontoonTopPx(level) + pontoon.heightPx / 2;
     const spool = Math.max(-pilot.travel, Math.min(pilot.travel, pontoonMiddle - pilotY));
     const error = reference - level;
-    const portA = error > deadbandM;
-    const portB = error < -deadbandM;
+    //Direct valve opening is counterclockwise; reverse the nozzle connections for that drive.
+    const portA = direct ? error < -deadband : error > deadband;
+    const portB = direct ? error > deadband : error < -deadband;
 
     //The screw turns with the carriage height, the wheel by the belt ratio
     const pulleys = beltPulleys(gain / unitGain);
-    const screwAngle = h0 / pitch * 2 * Math.PI;
-    const wheelAngle = screwAngle * pulleys.driven / pulleys.driving;
+    //Scale both radii together: retain the transmission ratio without overlapping mounts at extreme gains.
+    const scale = Math.min(1, (direct ? 34 : 30) / Math.max(pulleys.driving, pulleys.driven));
+    pulleys.driving *= scale;
+    pulleys.driven *= scale;
+    const outputAngle = direct ? -directOpening * Math.PI / 2 / valveDriveRatio() : h0 / pitch * 2 * Math.PI;
+    const wheelAngle = outputAngle * pulleys.driven / pulleys.driving;
 
     const valveTop = pilotY - pilot.halfHeight;
     //Jet on the lower cups turns the wheel one way, on the upper cups the other way
@@ -85,10 +93,14 @@ const IntegralDrive = ({level, h0, reference, pitch, gain, unitGain}) => {
     const nozzleB = turbine.y - turbine.radius + 10;
     const hoseEnd = nozzleX + 10;
     const pontoonRight = pontoon.axisXPx + pontoon.widthPx / 2;
-    const screw = {x: rackGeometry.screwX, y: screwPulleyY};
+    const output = direct ? {x: rackGeometry.valvePulley[0], y: rackGeometry.valvePulley[1]}
+        : {x: rackGeometry.screwX, y: screwPulleyY};
 
     return (
-        <svg width={1500} height={700} style={{position: "absolute", top: 0, left: 0, pointerEvents: "none"}}>
+        <svg width={1500} height={700} role="img" aria-label={label}
+             style={{position: "absolute", top: 0, left: 0, pointerEvents: "none"}}>
+            {direct && <rect x={pontoon.axisXPx - pontoon.widthPx / 2} y={pontoonTopPx(level)}
+                width={pontoon.widthPx} height={pontoon.heightPx} rx={5} fill="rgb(213, 68, 54)"/>}
             {/*Pontoon arm to the pilot valve spool*/}
             <polyline points={`${pontoonRight},${pontoonMiddle} ${pilot.x - 8},${pontoonMiddle} ` +
                 `${pilot.x - 8},${pilotY + spool} ${pilot.x},${pilotY + spool}`}
@@ -119,10 +131,17 @@ const IntegralDrive = ({level, h0, reference, pitch, gain, unitGain}) => {
             {portA && <Jet y={nozzleA}/>}
             {portB && <Jet y={nozzleB}/>}
 
-            {/*Elastic belt from the turbine pulley to the carriage screw*/}
-            <BeltSpans a={{x: turbine.x, y: turbine.y, r: pulleys.driving}} b={{...screw, r: pulleys.driven}}/>
+            {/*Turbine drives either the carriage screw (PI) or the intake pulley directly (I only).*/}
+            <BeltSpans a={{x: turbine.x, y: turbine.y, r: pulleys.driving}} b={{...output, r: pulleys.driven}}/>
             <Pulley x={turbine.x} y={turbine.y} r={pulleys.driving} angle={wheelAngle}/>
-            <Pulley x={screw.x} y={screw.y} r={pulleys.driven} angle={screwAngle}/>
+            {direct && <>
+                <BeltSpans a={{...output, r: rackGeometry.valveDriveRadius}}
+                    b={{x: config.intake.valveXPx, y: config.intake.valveYPx, r: rackGeometry.valveDrivenRadius}}/>
+                <Pulley x={output.x} y={output.y} r={rackGeometry.valveDriveRadius} angle={outputAngle}/>
+                <text x={output.x + rackGeometry.valveDrivenRadius + 8} y={(output.y + config.intake.valveYPx) / 2}
+                    fontSize={12} fill={colors.pipeDark}>2 : 1 (fixed)</text>
+            </>}
+            <Pulley x={output.x} y={output.y} r={pulleys.driven} angle={outputAngle}/>
         </svg>
     );
 };

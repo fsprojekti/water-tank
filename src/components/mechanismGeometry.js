@@ -19,8 +19,10 @@ export const rackGeometry = {
     screwX: pontoon.axisXPx + pontoon.widthPx / 2 + 20,
     screwTop: 26,
     screwBottom: 440,
-    //Pulley on the intake valve stem above the valve
+    //Compound pulley above the valve and a fixed open-belt reduction to the valve axle
     valvePulley: [intake.valveXPx, 108],
+    valveDriveRadius: controller.valveDrive.drivingRadiusM * render.m2Px,
+    valveDrivenRadius: controller.valveDrive.drivenRadiusM * render.m2Px,
     //Belt pulleys at ratio 1 : 1
     pulleyPx: 14,
 };

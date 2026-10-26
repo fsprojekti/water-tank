@@ -19,7 +19,8 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview",
     "test": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "analyze:lab": "node scripts/analyze-lab.mjs"
   },
   "type": "module",
   "devDependencies": {

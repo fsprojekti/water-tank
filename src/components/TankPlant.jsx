@@ -58,9 +58,9 @@ const CountdownOverlay = ({count}) => (
  * The intake valve is set by the student unless intakeAuto (mechanical controller); page specific parts go in children.
  * Run starts after a short countdown, so the student has time to get to the valve.
  */
-const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, children}) => {
+const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, children, toolbar, chart, hideTitle = false}) => {
     const {
-        duration, referenceLabel = "Reference", showReference = true, metric, drainValve = true, consumers = true,
+        duration, referenceLabel = "Reference", showReference = true, metric, drainValve = true, consumers = true, lab,
     } = config.evaluation[model.mode];
     const {referenceLevel} = model;
     const heightPx = config.tank.height * config.render.m2Px;
@@ -78,10 +78,11 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
 
     return (
         <>
-            <ControlBar model={model} flows={flows} setStatus={changeStatus} setInput={setInput}
-                        counting={countdown.count !== null}/>
+            {toolbar ? toolbar({changeStatus, counting: countdown.count !== null}) :
+                <ControlBar model={model} flows={flows} setStatus={changeStatus} setInput={setInput}
+                            counting={countdown.count !== null}/>}
 
-            <PageTitle mode={model.mode}/>
+            {!hideTitle && <PageTitle mode={model.mode}/>}
 
             <div className={"plant-layout"}>
                 <Scheme running={model.status === RUN}>
@@ -91,34 +92,41 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                                level={model.level / config.tank.height * 100}
                                reference={showReference ? referenceLevel / config.tank.height * 100 : undefined}/>
                     <TankVessel/>
+                    {/*Pipe behind the drive; valve and handle stay in front of it.*/}
                     <svg width={800} height={valvePanel.intakeTopPx}
                          style={{position: "absolute", top: 0, left: 0, pointerEvents: "none"}}>
                         <IntakePipe/>
+                    </svg>
+                    {children}
+                    <svg width={800} height={valvePanel.intakeTopPx}
+                         style={{position: "absolute", top: 0, left: 0, pointerEvents: "none"}}>
                         {/*Valve stem down to its panel*/}
                         <line x1={config.intake.valveXPx} y1={config.intake.valveYPx}
                               x2={config.intake.valveXPx} y2={valvePanel.intakeTopPx} stroke="black" strokeWidth={2}/>
                         <BallValve x={config.intake.valveXPx} y={config.intake.valveYPx} width={config.intake.pipeWidthPx}
-                                   open={flows.inValvePos / 100} horizontal/>
+                                   open={flows.inValvePos / 100} horizontal reverse={intakeAuto}
+                                   pulleyRadius={intakeAuto ? config.controller.valveDrive.drivenRadiusM * config.render.m2Px : undefined}/>
                     </svg>
                     <ControlSlider top={valvePanel.intakeTopPx} left={valvePanel.leftPx} width={valvePanel.widthPx}
+                                   label={lab ? "Dovod" : "Position"}
                                    value={flows.inValvePos} decimals={intakeAuto ? 1 : 0} disabled={intakeAuto}
                                    info={<FlowInfo flow={flows.flowIn}/>}
                                    onChange={(value) => setInput("inValvePos", value)}/>
-                    {children}
                     {showReference && (
-                        <DisplayVar top={226} left={1180} value={referenceLevel} unit={"m"} name={referenceLabel}
+                        <DisplayVar top={226} left={1180} value={referenceLevel} unit={"m"} name={lab ? "Želeni nivo" : referenceLabel}
                                     decimal={3} variant={"reference"}/>
                     )}
-                    <DisplayVar top={262} left={1180} value={model.level} unit={"m"} name={"Level"} decimal={3}/>
+                    <DisplayVar top={262} left={1180} value={model.level} unit={"m"} name={lab ? "Nivo" : "Level"} decimal={3}/>
 
-                    <Outlets showDrain={drainValve} showConsumers={consumers} drainPosition={model.outValvePos} drainFlow={flows.drain}
+                    <Outlets showDrain={drainValve} showConsumers={consumers} drainPosition={flows.outValvePos} drainFlow={flows.drain}
                              drainStemFromPx={valvePanel.leftPx + valvePanel.widthPx} enabled={model.consumersEnabled}
                              states={flows.states} flows={flows.consumers}
                              nominal={flows.nominal} supply={flows.supply}/>
                     {drainValve && (
                         <>
                             <ControlSlider top={config.outlets.valveYPx - 45} left={valvePanel.leftPx}
-                                           width={valvePanel.widthPx} value={model.outValvePos}
+                                           width={valvePanel.widthPx} value={flows.outValvePos} disabled={Boolean(lab)}
+                                           label={lab ? "Odtok" : "Position"}
                                            info={<FlowInfo flow={flows.drain}/>}
                                            onChange={(value) => setInput("outValvePos", value)}/>
                         </>
@@ -126,8 +134,8 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                     {countdown.count !== null && <CountdownOverlay count={countdown.count}/>}
                 </Scheme>
 
-                <Chart history={model.history} reference={referenceLevel} duration={duration} showDrain={drainValve}
-                       showConsumers={consumers} metric={metric}/>
+                {chart ?? <Chart history={model.history} reference={referenceLevel} duration={duration} showDrain={drainValve}
+                       showConsumers={consumers} metric={metric}/>}
             </div>
         </>
     );

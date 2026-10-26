@@ -1,11 +1,13 @@
 import config from "../config";
 import colors from "./pipeColors";
+import {valveDriveRatio} from "../simulation/controller";
 import {BeltSpans, FixedMount, Gear, Pulley} from "./mechanismParts";
 import {controllerPulleys, pinionY, pontoonTopPx, rackGeometry as g} from "./mechanismGeometry";
 
 /**
- * Mechanical P controller: the rack on the pontoon turns the pinion, its pulley drives the pulley on the intake valve
- * stem by an elastic belt. The pinion sits on a carriage on a lead screw; the carriage height is the closing level h0.
+ * Mechanical P controller: the rack on the pontoon turns the pinion, its pulley drives a pulley above the intake valve
+ * by an elastic belt. A fixed open-belt reduction connects that pulley to the valve axle in the same direction.
+ * The pinion sits on a carriage on a lead screw; the carriage height is the closing level h0.
  * Pulley sizes show the belt ratio, which sets the gain kp. crank: draw a hand crank on the screw (no turbine).
  */
 const RackDrive = ({level, kp, h0, opening, crank = true}) => {
@@ -15,8 +17,9 @@ const RackDrive = ({level, kp, h0, opening, crank = true}) => {
     const pulleys = controllerPulleys(kp);
     //The pinion rolls on the rack: its angle follows the rack position relative to the carriage
     const pinionAngle = -(top - pontoonTopPx(h0)) / g.pinionRadius;
-    //The valve turns a quarter turn from closed to fully open
+    //The open belt keeps the rotation direction and reduces a half turn to the valve's quarter turn
     const valveAngle = -opening / 100 * Math.PI / 2;
+    const pulleyAngle = valveAngle / valveDriveRatio();
     const [valveX, valveY] = g.valvePulley;
     const rackLeft = pontoon.axisXPx - g.rackWidth / 2;
     const teeth = [];
@@ -55,15 +58,23 @@ const RackDrive = ({level, kp, h0, opening, crank = true}) => {
             <rect x={pinion.x - 6} y={pinion.y - 9} width={g.screwX - pinion.x + 18} height={18} rx={4} fill={colors.metal}/>
             <rect x={g.screwX - 10} y={pinion.y - 14} width={20} height={28} rx={3} fill={"#495057"}/>
 
-            {/*Belt from the pinion pulley to the valve stem pulley*/}
+            {/*Belt from the pinion pulley to the input of the fixed valve reduction*/}
             <BeltSpans a={{x: pinion.x, y: pinion.y, r: pulleys.driving}} b={{x: valveX, y: valveY, r: pulleys.driven}}/>
             <Gear x={pinion.x} y={pinion.y} r={g.pinionRadius - 4} angle={pinionAngle} teeth={18}/>
             <Pulley x={pinion.x} y={pinion.y} r={pulleys.driving} angle={pinionAngle}/>
 
-            {/*Valve stem from its pulley down to the valve*/}
-            <line x1={valveX} y1={valveY} x2={valveX} y2={config.intake.valveYPx} stroke={colors.metal} strokeWidth={5}/>
-            <Pulley x={valveX} y={valveY} r={pulleys.driven} angle={valveAngle}/>
-            <text x={valveX + pulleys.driven + 6} y={valveY + 4} fontSize={12} fill={colors.pipeDark}>valve</text>
+            {/*Small pulley shares the upper axle; the larger pulley is fixed to the valve axle.*/}
+            <g aria-label={`Fixed valve belt reduction ${1 / valveDriveRatio()} : 1`}>
+                <BeltSpans a={{x: valveX, y: valveY, r: g.valveDriveRadius}}
+                           b={{x: config.intake.valveXPx, y: config.intake.valveYPx, r: g.valveDrivenRadius}}/>
+                <Pulley x={valveX} y={valveY} r={g.valveDriveRadius} angle={pulleyAngle}/>
+                {/*The output pulley is drawn inside BallValve, above its body and below its handle.*/}
+                <Pulley x={valveX} y={valveY} r={pulleys.driven} angle={pulleyAngle}/>
+                <text x={valveX + g.valveDrivenRadius + 8} y={(valveY + config.intake.valveYPx) / 2}
+                      fontSize={12} fill={colors.pipeDark}>
+                    {1 / valveDriveRatio()} : 1 (fixed)
+                </text>
+            </g>
         </svg>
     );
 };

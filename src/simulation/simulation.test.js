@@ -2,7 +2,7 @@ import config from "../config";
 import {consumerFlow, consumerFlows, drainFlow, ERROR, intakeFlow, nextLevel, OK, supplyStatus, WARNING} from "./model";
 import {consumerStates, createSchedule, meanDemand} from "./schedule";
 import {meanLevel, steadyState, steadyWindowS, targetReachedAt, timeConstant} from "./measurements";
-import {beltRatio, proportionalIntakePosition} from "./controller";
+import {beltRatio, proportionalIntakePosition, valveDriveRatio} from "./controller";
 import {
     createModel, isFinished, MANUAL, MECHANICAL, modelFlows, modelReducer, modelTime, OPERATOR,
     LOAD, PI, RESET, RUN, SET_INPUT, SET_STATUS, STOP, supplyRatio, TANK, TICK, TUNING,
@@ -308,9 +308,12 @@ describe("rack and pinion controller", () => {
 
     test("belt ratio grows with the gain", () => {
         expect(beltRatio(2)).toBeCloseTo(2 * beltRatio(1));
-        //A quarter turn of the valve at full opening: pinion turn (1/kp)/r times the ratio is π/2
-        const kp = 4;
-        expect((1 / kp) / config.controller.pinionRadiusM * beltRatio(kp)).toBeCloseTo(Math.PI / 2);
+        //Both transmission stages must produce the valve's quarter turn at full opening for any gain.
+        for (const kp of [config.controller.kpLimits[0], 4, config.controller.kpLimits[1]]) {
+            const inputTurn = (1 / kp) / config.controller.pinionRadiusM * beltRatio(kp);
+            expect(inputTurn).toBeCloseTo(Math.PI);
+            expect(inputTurn * valveDriveRatio()).toBeCloseTo(Math.PI / 2);
+        }
     });
 });
 
