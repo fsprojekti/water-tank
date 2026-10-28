@@ -137,20 +137,24 @@ export const dragPart = (build, id, pose) => {
 //Released part: a float drops back onto the water
 export const dropPart = (build) => resolve(build.assembly, build.state);
 
-//Moves a part with its motion axis
+//Moves a part with its motion axis and its bearings
 const movePartBy = (build, id, [dx, dy]) => {
     const pose = build.state.poses[id];
-    const axis = barAxis(build.assembly, id);
+    const joints = build.assembly.joints.map((j) => {
+        if (j.type === "axis" && j.bar === id) return {...j, at: [j.at[0] + dx, j.at[1] + dy]};
+        if (j.type === "ground" && j.a.part === id) return {...j, at: [j.at[0] + dx, j.at[1] + dy]};
+        return j;
+    });
     return {
-        assembly: axis ? replaceJoint(build.assembly, {...axis, at: [axis.at[0] + dx, axis.at[1] + dy]}) : build.assembly,
+        assembly: {...build.assembly, joints},
         state: {...build.state, poses: {...build.state.poses, [id]: {...pose, x: pose.x + dx, y: pose.y + dy}}},
     };
 };
 
-//Not joined to any other part (a bar may have its motion axis)
+//Not joined to any other part: a bar may have its motion axis, a wheel its bearing, and they move with it
 const free = (build, id) => {
     const part = build.assembly.parts.find((p) => p.id === id);
-    return part.type !== "valve" && partJoints(build.assembly, id).every((joint) => joint.type === "axis");
+    return part.type !== "valve" && partJoints(build.assembly, id).every((joint) => joint.type === "axis" || joint.type === "ground");
 };
 
 /**
@@ -247,11 +251,11 @@ const shaft = (assembly, id) => {
 };
 
 /**
- * Friction contact chosen by the student: the rim of a wheel rolls on the face of a bar it is next to, or on the rim
- * of another wheel. The wheel's shaft moves across to touch, with its mounts on the frame; the valve stays and the
- * other wheel comes to it instead.
+ * Friction contact: the rim of a wheel rolls on the face of a bar it is next to, or on the rim of another wheel.
+ * The moving part (by default the wheel, with its shaft and bearings) goes across until they touch; the valve
+ * stays, so the other part comes to it instead.
  */
-export const addContact = (build, wheelId, otherId) => {
+export const addContact = (build, wheelId, otherId, moving = wheelId) => {
     const p = parts(build.assembly);
     let [wheel, other] = [p[wheelId], p[otherId]];
     if (!isWheel(wheel)) return {error: "Stik se začne pri kolesu ali ventilu."};
@@ -260,7 +264,8 @@ export const addContact = (build, wheelId, otherId) => {
         return {error: "Ta dva dela se že dotikata."};
     }
     if (wheel.type === "valve" && isWheel(other)) [wheel, other] = [other, wheel];
-    if (wheel.type === "valve") return {error: "Ventil se ne premakne: kolo naj pride k njemu."};
+    const mover = p[moving].type === "valve" ? (moving === wheel.id ? other.id : wheel.id) : moving;
+    if (p[mover].type === "valve") return {error: "Ventil se ne premakne: kolo naj pride k njemu."};
     const {poses} = build.state;
     const gap = rimGap(wheel, poses[wheel.id], other, poses[other.id]);
     if (gap === null) return {error: `${wheel.name} ni ob letvi: postavi ga ob njeno dolžino.`};
@@ -274,16 +279,45 @@ export const addContact = (build, wheelId, otherId) => {
         const d = Math.hypot(o.x - w.x, o.y - w.y) || 1;
         toward = [(o.x - w.x) / d, (o.y - w.y) / d];
     }
-    const shift = [toward[0] * gap, toward[1] * gap];
-    const group = shaft(build.assembly, wheel.id);
+    const sign = mover === wheel.id ? 1 : -1;
+    const shift = [sign * toward[0] * gap, sign * toward[1] * gap];
+    const group = p[mover].type === "bar" ? [mover] : shaft(build.assembly, mover);
+    if (group.includes("valve")) return {error: "Ventil se ne premakne: kolo naj pride k njemu."};
     let current = build;
     for (const id of group) current = movePartBy(current, id, shift);
-    current = {...current, assembly: {...current.assembly, joints: current.assembly.joints.map((j) => (j.type === "ground" &&
-        group.includes(j.a.part) ? {...j, at: [j.at[0] + shift[0], j.at[1] + shift[1]]} : j))}};
     const [id, assembly] = nextId(current.assembly, "j");
     const joint = capture({id, type: "contact", a: wheel.id, b: other.id}, assembly, current.state.poses);
     const result = resolve({...assembly, joints: [...assembly.joints, joint]}, current.state);
     return holds(result) ? result : {error: "Dela se ne moreta dotikati, ne da bi se mehanizem zagozdil."};
+};
+
+/**
+ * Contact the dragged part could make where it is now: the nearest wheel rim within reach [m] of a bar face or another
+ * rim, {wheel, other} or null. Parts already touching and wheels on one shaft don't count.
+ */
+export const contactCandidate = (build, id, reach) => {
+    const p = parts(build.assembly), dragged = p[id], {poses} = build.state;
+    let best = null;
+    for (const other of build.assembly.parts) {
+        if (other.id === id) continue;
+        let pair;
+        if (isWheel(dragged) && (other.type === "bar" || isWheel(other))) pair = [dragged, other];
+        else if (dragged.type === "bar" && isWheel(other)) pair = [other, dragged];
+        else continue;
+        const [wheel, surface] = pair;
+        if (build.assembly.joints.some((j) => j.type === "contact" && [j.a, j.b].includes(wheel.id) && [j.a, j.b].includes(surface.id))) continue;
+        if (isWheel(surface) && shaft(build.assembly, wheel.id).includes(surface.id)) continue;
+        const gap = rimGap(wheel, poses[wheel.id], surface, poses[surface.id]);
+        if (gap === null || Math.abs(gap) > reach || (best && Math.abs(gap) >= Math.abs(best.gap))) continue;
+        best = {wheel: wheel.id, other: surface.id, gap};
+    }
+    return best;
+};
+
+//Released part: a float drops back onto the water; next to a wheel or bar it is set against it to roll there
+export const releasePart = (build, id, contact) => {
+    const dropped = dropPart(build);
+    return contact ? addContact(dropped, contact.wheel, contact.other, id) : dropped;
 };
 
 /**

@@ -23,16 +23,10 @@ const tools = [
         icon: <g><circle cx={10} cy={20} r={7} fill={colors.steel}/><circle cx={30} cy={20} r={7} fill={colors.steel}/>
             <line x1={10} y1={13} x2={30} y2={13} stroke={colors.belt} strokeWidth={3}/>
             <line x1={10} y1={27} x2={30} y2={27} stroke={colors.belt} strokeWidth={3}/></g>},
-    {type: "contact", label: "Stik", hint: "Kolo naj se kotali po letvi ali po drugem kolesu",
-        icon: <g><rect x={6} y={2} width={6} height={36} rx={2} fill={colors.steel} stroke={colors.metal}/>
-            <circle cx={24} cy={20} r={11} fill={colors.steel} stroke={colors.belt} strokeWidth={3}/>
-            <circle cx={13} cy={20} r={3} fill={"#f08c00"}/></g>},
 ];
 
 const toolHints = {
     belt: ["Klikni prvo kolo ali ventil · Esc prekliče", "Klikni drugo kolo ali ventil · Esc prekliče"],
-    contact: ["Klikni kolo, ki naj se kotali · Esc prekliče",
-        "Klikni letev ali kolo, po katerem naj se kotali; kolo se primakne do njega · Esc prekliče"],
 };
 
 const cm = (m) => Math.round(m * 1000) / 10;
@@ -159,7 +153,8 @@ const MechanismPanel = ({build, analysis, selected, locked, tool, message, onPic
     const part = selected?.kind === "part" && assembly.parts.find((p) => p.id === selected.id);
     const joint = selected?.kind === "joint" && assembly.joints.find((j) => j.id === selected.id);
     const hint = tool ? toolHints[tool.type][tool.first ? 1 : 0]
-        : "Povleci del na shemo. Točko ○ povleci na drugo točko (zglob); Ležaj spusti na os kolesa, da jo pritrdi. " +
+        : "Povleci del na shemo. Kolo povleci ob letev ali kolo in spusti za stik. Točko ○ povleci na drugo točko (zglob); " +
+        "Ležaj spusti na os kolesa. " +
         "Izbrani letvi premakneš os (črtkana premica) ali jo zasukaš z ročico.";
     return (
         <div className="build-panel">

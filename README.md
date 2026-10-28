@@ -70,9 +70,10 @@ controller over the tank from parts and runs it like the measuring pages (60 s, 
   switched off in the panel (e.g. for a lever on a pivot).
 - Joints are made by dragging a point (○) onto another point for a pin (toggle to a rigid joint in the panel; two
   axles share a shaft). A **Ležaj** (bearing, drawn as a triangle on a hatched base) dropped on a wheel axle or a point
-  fixes it where it is; a wheel's panel also has **Os v ležaju**. The **Stik** tool defines the surfaces that roll on
-  each other: click a wheel, then a bar (its faces are highlighted) or another wheel's rim; the wheel's shaft moves
-  across until they touch, with its frame mounts, so a wheel already fixed on the frame still rolls on the bar.
+  fixes it where it is; a wheel's panel also has **Os v ležaju**. A part with only bearings or a motion axis moves
+  with them when dragged. Rolling contacts are made by dragging: when a dragged wheel's rim comes near a bar face or
+  another rim (or a dragged bar near a wheel), both surfaces light up with **Spusti za stik**, and releasing sets
+  the dragged part against the other so the rim rolls there without slipping.
   When the bar slides past the wheel, the wheel no longer touches it and stands still; it rolls on when the bar
   comes back. Parts dropped next to each other are not joined by themselves. The **Jermen** tool joins two wheels, open or
   crossed. The selected part lists its joints, each with ✕ to remove it, and **Odklopi vse** takes it off all of

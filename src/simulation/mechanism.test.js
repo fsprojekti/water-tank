@@ -1,4 +1,7 @@
-import {addBearing, addBelt, addContact, addPart, closeValve, connect, detachPart, emptyBuild, exampleBuild, moveWater, setAxis, updateJoint, updatePart} from "./assembly";
+import {
+    addBearing, addBelt, addContact, addPart, closeValve, connect, contactCandidate, detachPart, dragPart, emptyBuild, exampleBuild,
+    moveWater, releasePart, setAxis, updateJoint, updatePart,
+} from "./assembly";
 import {analyse, settle} from "./mechanism";
 import {createModel, modelReducer, RESET, RUN, SET_INPUT, SET_STATUS, TICK} from "./reducer";
 
@@ -175,4 +178,26 @@ test("a wheel stands still once the bar has slid past it, and rolls on when it c
     //Down past the wheel and back up: the wheel ends where it started
     const back = moveWater(moveWater(build, 0.5), 0.75);
     expect(back.state.poses.p3.a).toBeCloseTo(build.state.poses.p3.a, 6);
+});
+
+test("dragging a part next to a wheel offers a contact, and releasing sets them against each other", () => {
+    //A wheel in a bearing beside the bar on the float; the bar is moved across until its face nears the rim
+    let build = addPart(emptyBuild(0.75), "float", [2.2, 0.9]);
+    build = addPart(build, "bar", [2.2, 1.3]);
+    build = connect(build, {part: "p2", point: "0"}, {part: "p1", point: "center"});
+    build = addPart(build, "wheel", [2.4, 1.3]);
+    build = addBearing(build, [2.4, 1.3]);
+    expect(contactCandidate(build, "p2", 0.04)).toBeNull();
+    const near = dragPart(build, "p2", {...build.state.poses.p2, x: 2.4 - 0.0925 - 0.02});
+    const contact = contactCandidate(near, "p2", 0.04);
+    expect(contact).toMatchObject({wheel: "p3", other: "p2"});
+    const released = releasePart(near, "p2", contact);
+    expect(released.error).toBeUndefined();
+    //The bar came to the wheel, the bearing stayed
+    expect(released.state.poses.p3.x).toBeCloseTo(2.4, 9);
+    expect(released.state.poses.p2.x).toBeCloseTo(2.4 - 0.08 - 0.0125, 6);
+    expect(released.state.poses.p1.x).toBeCloseTo(released.state.poses.p2.x, 6);
+    //A wheel in a bearing is dragged with its bearing
+    const moved = dragPart(build, "p3", {...build.state.poses.p3, x: 2.6});
+    expect(moved.assembly.joints.find((j) => j.type === "ground").at[0]).toBeCloseTo(2.6, 9);
 });

@@ -7,7 +7,7 @@ import {isFinished, modelFlows, RESET, RUN, STOP} from "../simulation/reducer";
 import {labMeasurements} from "../simulation/labMeasurements";
 import {analyse, fromPx, isWheel} from "../simulation/mechanism";
 import {
-    addBearing, addBelt, addContact, addPart, closeValve, connect, detachPart, emptyBuild, moveWater, exampleBuild, removeBearing, removeJoint,
+    addBearing, addBelt, addPart, closeValve, connect, detachPart, emptyBuild, moveWater, exampleBuild, removeBearing, removeJoint,
     removePart, saveBuild, setAxis, updateJoint, updatePart,
 } from "../simulation/assembly";
 import ControlSlider from "../components/ControlSlider";
@@ -148,19 +148,19 @@ const BuildSession = () => {
         return () => window.removeEventListener("keydown", key);
     }, []);
 
-    //Belt: two wheels; contact: a wheel, then the bar or wheel it rolls on
+    //The belt joins two clicked wheels
     const pickForTool = (id) => {
         const part = model.assembly.parts.find((p) => p.id === id);
+        if (!isWheel(part)) {
+            setMessage("Jermen poveže dve kolesi ali kolo in ventil.");
+            return;
+        }
         if (!tool.first) {
-            if (!isWheel(part)) {
-                setMessage(tool.type === "belt" ? "Jermen poveže dve kolesi ali kolo in ventil." : "Najprej klikni kolo, ki naj se kotali.");
-                return;
-            }
             setMessage(null);
             setTool({...tool, first: id});
             return;
         }
-        const result = tool.type === "belt" ? addBelt(build, tool.first, id) : addContact(build, tool.first, id);
+        const result = addBelt(build, tool.first, id);
         apply(result, (next) => ({kind: "joint", id: next.assembly.joints.at(-1).id}));
         if (!result.error) setTool(null);
     };

@@ -3,7 +3,7 @@ import config from "../config";
 import colors from "./pipeColors";
 import {BeltSpans, FixedMount, Pulley} from "./mechanismParts";
 import {barWidth, floatHeight, fromPx, isWheel, partPoint, partPoints, toPx} from "../simulation/mechanism";
-import {barAxis, connect, dragPart, dropPart, setAxis} from "../simulation/assembly";
+import {barAxis, connect, contactCandidate, dragPart, releasePart, setAxis} from "../simulation/assembly";
 import schemePoint from "./schemePoint";
 
 const k = config.render.m2Px;
@@ -18,6 +18,8 @@ const problemColor = "#e03131";
 const surfaceColor = "#f08c00";
 //Turning handle of a motion axis, this far beyond the bar's end [m]
 const handleM = 0.08;
+//A dragged rim this close to a bar face or another rim [Px] offers a contact
+const contactPx = 14;
 
 const unit = ([x, y]) => {
     const length = Math.hypot(x, y) || 1;
@@ -194,6 +196,8 @@ const Belt = ({joint, parts, poses, selected}) => {
 const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, onToolPick, onChange, placing, svgRef}) => {
     const [draft, setDraft] = useState(null);
     const [link, setLink] = useState(null);
+    //Contact the dragged part would make if released now
+    const [snap, setSnap] = useState(null);
     const gesture = useRef(null);
     const shown = draft ?? build;
     const {assembly, state} = shown;
@@ -227,8 +231,9 @@ const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, o
         const at = world(event);
         if (g.kind === "part") {
             const {pose} = g;
-            setDraft((current) => dragPart(current ?? build, g.id,
-                {...pose, x: pose.x + at[0] - g.at[0], y: pose.y + at[1] - g.at[1]}));
+            const next = dragPart(draft ?? build, g.id, {...pose, x: pose.x + at[0] - g.at[0], y: pose.y + at[1] - g.at[1]});
+            setDraft(next);
+            setSnap(contactCandidate(next, g.id, contactPx / k));
         } else if (g.kind === "axis") {
             //Moved with the pointer, or turned towards it in steps of 5°
             const step = Math.PI / 36;
@@ -246,7 +251,7 @@ const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, o
         const g = gesture.current;
         gesture.current = null;
         if (!g) return;
-        if (g.kind === "part" && g.moved && draft) onChange(dropPart(draft));
+        if (g.kind === "part" && g.moved && draft) onChange(releasePart(draft, g.id, snap));
         if (g.kind === "axis" && g.moved && draft) onChange(draft);
         if (g.kind === "point") {
             const target = g.moved ? dropTarget(build, {part: g.part, point: g.point}, world(event)) : null;
@@ -255,6 +260,7 @@ const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, o
         }
         setDraft(null);
         setLink(null);
+        setSnap(null);
     };
 
     const outline = (id) => (selected?.kind === "part" && selected.id === id ? selectColor
@@ -322,9 +328,15 @@ const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, o
                 }
                 return null;
             })}
-            {tool?.type === "contact" && assembly.parts.filter((part) => part.type === "bar" || isWheel(part)).map((part) => (
-                <Surfaces key={part.id} part={part} pose={state.poses[part.id]} first={tool.first === part.id}/>
-            ))}
+            {snap && [snap.wheel, snap.other].map((id) => <Surfaces key={id} part={parts[id]} pose={state.poses[id]}/>)}
+            {snap && (() => {
+                const [x, y] = toPx([state.poses[snap.wheel].x, state.poses[snap.wheel].y]);
+                const r = parts[snap.wheel].radius * k;
+                return <g pointerEvents={"none"}>
+                    <rect x={x - 75} y={y - r - 38} width={150} height={28} rx={14} fill={surfaceColor}/>
+                    <text x={x} y={y - r - 18} textAnchor={"middle"} fontSize={16} fontWeight={600} fill={"white"}>Spusti za stik</text>
+                </g>;
+            })()}
             {tool?.type === "belt" && assembly.parts.filter(isWheel).map((part) => (
                 <Surfaces key={part.id} part={part} pose={state.poses[part.id]} first={tool.first === part.id}/>
             ))}
