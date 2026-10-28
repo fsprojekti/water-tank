@@ -90,7 +90,8 @@ export const floatsOnWater = (part, pose) =>
 
 /**
  * Residual equations of a joint, zero when it holds. P(id) is the current pose of a part.
- * Rolling: the wheel turns by the distance it rolls along the bar (or the other wheel) over its radius.
+ * Rolling: the wheel turns by the distance it rolls along the bar (or the other wheel) over its radius. Past the
+ * bar's end the wheel no longer touches it and stands still; when the bar comes back it rolls on from there.
  */
 const jointEquations = (joint, parts) => {
     switch (joint.type) {
@@ -124,8 +125,9 @@ const jointEquations = (joint, parts) => {
                 return (P) => {
                     const w = P(wheel.id), bar = P(other.id);
                     const [u, v] = barFrame(bar, [w.x, w.y]);
-                    return [v - joint.side * (wheel.radius + barWidth / 2),
-                        u + joint.side * wheel.radius * (w.a - bar.a) - joint.offset];
+                    const touching = u >= 0 && u <= other.length;
+                    return [touching ? v - joint.side * (wheel.radius + barWidth / 2) : 0,
+                        clamp(u, 0, other.length) + joint.side * wheel.radius * (w.a - bar.a) - joint.offset];
                 };
             }
             return (P) => {
@@ -460,7 +462,7 @@ export const analyse = (assembly, state) => {
     };
     for (const joint of assembly.joints.filter((j) => j.type === "contact" && parts[j.b].type === "bar")) {
         const where = edges(along(joint.b, (poses) => [poses[joint.a].x, poses[joint.a].y]));
-        if (where) issues.push(`${parts[joint.a].name} zdrsne z ${parts[joint.b].name.toLowerCase().replace("letev", "letve")} ${where}.`);
+        if (where) issues.push(`${parts[joint.b].name} zdrsne mimo ${parts[joint.a].name.toLowerCase().replace("kolo", "kolesa")} ${where}: kolo tam obstane.`);
     }
 
     //Closing level nearest the current level, and the slope of the opening there

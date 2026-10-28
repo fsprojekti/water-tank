@@ -7,7 +7,7 @@ import {isFinished, modelFlows, RESET, RUN, STOP} from "../simulation/reducer";
 import {labMeasurements} from "../simulation/labMeasurements";
 import {analyse, fromPx, isWheel} from "../simulation/mechanism";
 import {
-    addBearing, addBelt, addContact, addPart, closeValve, connect, emptyBuild, exampleBuild, removeBearing, removeJoint,
+    addBearing, addBelt, addContact, addPart, closeValve, connect, detachPart, emptyBuild, moveWater, exampleBuild, removeBearing, removeJoint,
     removePart, saveBuild, setAxis, updateJoint, updatePart,
 } from "../simulation/assembly";
 import ControlSlider from "../components/ControlSlider";
@@ -24,6 +24,8 @@ const Metric = ({label, children}) => <div className="lab-metric"><small>{label}
 const {valvePanel, m2Px} = config.render;
 //Where a part appears when its palette card is only clicked [m]: above the tank, a little apart each time
 const dropSpot = (count) => [2.5 + (count % 5) * 0.15, 1.45];
+//Changes kept for undo
+const historyLength = 50;
 
 /**
  * Workshop: the student builds the level controller from parts over the tank, tries it by moving the water
@@ -49,19 +51,36 @@ const BuildSession = () => {
         onChange: (opening) => setInput("scenario", drainChoices.find((s) => s.opening === opening).id),
     };
 
-    //A change is applied, or its reason for failing shown
+    //Builds before (past) and after (future) the current one, for undo and redo of mechanism changes
+    const [history, setHistory] = useState({past: [], future: []});
+    //A change is applied and can be undone, or its reason for failing shown
     const apply = (result, select) => {
         if (result.error) {
             setMessage(result.error);
             return;
         }
         setMessage(null);
+        setHistory(({past}) => ({past: [...past.slice(1 - historyLength), build], future: []}));
         setInput("build", result);
         if (select) setSelected(select(result));
     };
+    //A build from the history comes back at the water level of now; moving the water is not a change
+    const restore = (from) => {
+        if (locked || !history[from].length) return;
+        const target = history[from].at(from === "past" ? -1 : 0);
+        setHistory((h) => ({
+            past: from === "past" ? h.past.slice(0, -1) : [...h.past, build],
+            future: from === "past" ? [build, ...h.future] : h.future.slice(1),
+        }));
+        setInput("build", moveWater(target, model.level));
+        setSelected(null);
+        setMessage(null);
+    };
+    const undo = () => restore("past");
+    const redo = () => restore("future");
     //Latest values for window listeners
     const latest = useRef(null);
-    useEffect(() => { latest.current = {build, locked, selected, apply}; });
+    useEffect(() => { latest.current = {build, locked, selected, apply, undo, redo}; });
     useEffect(() => () => setStatus(STOP), [setStatus]);
     useEffect(() => saveBuild({assembly: model.assembly, state: model.mechanismStart}), [model.assembly, model.mechanismStart]);
 
@@ -100,13 +119,21 @@ const BuildSession = () => {
         window.addEventListener("pointercancel", finish);
     };
 
+    //A joint removed from its part's list leaves the part selected
     const remove = (item) => {
         apply(item.kind === "part" ? removePart(build, item.id) : removeJoint(build, item.id));
-        setSelected(null);
+        if (selected?.kind === item.kind && selected.id === item.id) setSelected(null);
     };
     useEffect(() => {
         const key = (event) => {
             if (event.target.closest?.("input, textarea, select")) return;
+            //Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes (Cmd on a Mac)
+            if ((event.ctrlKey || event.metaKey) && ["z", "y"].includes(event.key.toLowerCase())) {
+                event.preventDefault();
+                if (event.key.toLowerCase() === "y" || event.shiftKey) latest.current.redo();
+                else latest.current.undo();
+                return;
+            }
             if (event.key === "Escape") {
                 setTool(null);
                 setSelected(null);
@@ -167,11 +194,13 @@ const BuildSession = () => {
                         onBearing={(id, on) => apply(on ? connect(build, {part: id, point: "axle"},
                             {ground: [build.state.poses[id].x, build.state.poses[id].y]}) : removeBearing(build, id))}
                         onRemovePart={(id) => remove({kind: "part", id})}
+                        onDetach={(id) => apply(detachPart(build, id))}
                         onUpdateJoint={(id, changes) => apply(updateJoint(build, id, changes))}
                         onRemoveJoint={(id) => remove({kind: "joint", id})}
                         onCloseValve={() => apply(closeValve(build))}
                         onExample={() => apply(exampleBuild(model.level), () => null)}
-                        onClear={() => apply(emptyBuild(model.level), () => null)}/>
+                        onClear={() => apply(emptyBuild(model.level), () => null)}
+                        canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}/>
         <h1 className="lab-view-title"><b>Delavnica · </b>{buildTask.title}</h1>
     </>;
 

@@ -8,9 +8,6 @@ import {
  * every operation returns a new build with the joints holding, or {error} when the change can't be assembled.
  */
 
-//A wheel rim this close to a bar or another wheel is mounted against it [m]; by hand it is placed less exactly
-const contactTolerance = 0.008;
-const handTolerance = 0.02;
 const jointTolerance = 0.001;
 const storageKey = "water-tank-mechanism";
 
@@ -86,31 +83,6 @@ const rimGap = (wheel, wheelPose, other, otherPose) => {
     return Math.hypot(otherPose.x - wheelPose.x, otherPose.y - wheelPose.y) - wheel.radius - other.radius;
 };
 
-/**
- * Wheels touching a bar or another wheel are mounted against it: a friction contact is added when the rim is
- * within the tolerance and the mechanism can be assembled with it.
- */
-const mountContacts = (build, tolerance = contactTolerance) => {
-    let current = build;
-    const list = current.assembly.parts;
-    for (const wheel of list.filter(isWheel)) {
-        for (const other of list) {
-            if (other.id === wheel.id || !(other.type === "bar" || isWheel(other))) continue;
-            if (isWheel(other) && other.id < wheel.id) continue;
-            const {assembly, state} = current;
-            const touching = assembly.joints.some((j) => j.type === "contact" &&
-                [j.a, j.b].includes(wheel.id) && [j.a, j.b].includes(other.id));
-            const gap = rimGap(wheel, state.poses[wheel.id], other, state.poses[other.id]);
-            if (touching || gap === null || Math.abs(gap) > tolerance) continue;
-            const [id, numbered] = nextId(assembly, "j");
-            const joint = capture({id, type: "contact", a: wheel.id, b: other.id}, numbered, state.poses);
-            const candidate = resolve({...numbered, joints: [...numbered.joints, joint]}, state);
-            if (holds(candidate)) current = candidate;
-        }
-    }
-    return current;
-};
-
 const partName = (assembly, type) => {
     const {label} = partTypes[type];
     const used = assembly.parts.filter((part) => part.name.startsWith(label))
@@ -136,7 +108,7 @@ export const addPart = (build, type, [x, y]) => {
         const [axisId, numbered] = nextId(assembly, "j");
         assembly = {...numbered, joints: [...numbered.joints, {id: axisId, ...newAxis(id, pose, [x, y], pose.a)}]};
     }
-    return mountContacts(resolve(assembly, {...build.state, poses: {...build.state.poses, [id]: pose}}), handTolerance);
+    return resolve(assembly, {...build.state, poses: {...build.state.poses, [id]: pose}});
 };
 
 /**
@@ -162,8 +134,8 @@ export const dragPart = (build, id, pose) => {
     return {...result, assembly: replaceJoint(result.assembly, {...moved, at: worldPoint(result.state.poses[id], moved.local)})};
 };
 
-//Released part: a float drops back onto the water, wheels mount against what they touch
-export const dropPart = (build) => mountContacts(resolve(build.assembly, build.state), handTolerance);
+//Released part: a float drops back onto the water
+export const dropPart = (build) => resolve(build.assembly, build.state);
 
 //Moves a part with its motion axis
 const movePartBy = (build, id, [dx, dy]) => {
@@ -217,8 +189,7 @@ export const connect = (build, source, target) => {
         const locked = capture({id, ...joint}, result.assembly, result.state.poses);
         result = resolve({...result.assembly, joints: result.assembly.joints.map((j) => (j.id === id ? locked : j))}, result.state);
     }
-    if (!holds(result)) return {error: "Tako se mehanizma ne da sestaviti: deli bi se zagozdili."};
-    return mountContacts(result);
+    return holds(result) ? result : {error: "Tako se mehanizma ne da sestaviti: deli bi se zagozdili."};
 };
 
 /**
@@ -340,8 +311,8 @@ export const setAxis = (build, barId, change) => {
 };
 
 /**
- * Changes part parameters [m] or its angle [rad]. A changed size remounts the part: its contacts come off and
- * are mounted again where the rims still touch; other joints keep their meaning at the new size.
+ * Changes part parameters [m] or its angle [rad]. A changed size remounts the part: its contacts come off and are
+ * set again, the wheel moving across to touch; other joints keep their meaning at the new size.
  */
 export const updatePart = (build, id, changes) => {
     const part = build.assembly.parts.find((p) => p.id === id);
@@ -357,21 +328,27 @@ export const updatePart = (build, id, changes) => {
         if (axis) assembly = replaceJoint(assembly, {...axis, angle: axis.angle + turn, barAngle: axis.barAngle + turn});
         const placed = {...state, poses: {...state.poses, [id]: pose}};
         const turned = free(build, id) ? resolve(assembly, placed) : resolve(assembly, placed, {drag: {id, pose}});
-        return holds(turned) ? mountContacts(resolve(turned.assembly, turned.state)) : {error: "Tako se dela ne da zasukati."};
+        return holds(turned) ? turned : {error: "Tako se dela ne da zasukati."};
     }
     const resized = {...part, ...changes};
+    const contacts = assembly.joints.filter((j) => j.type === "contact" && [j.a, j.b].includes(id));
     const points = partPoints(resized).map((point) => point.id);
     //Joints at points the shorter bar no longer has move to its end
     const keep = (end) => (end.part === id && !points.includes(end.point) ? {...end, point: points.at(-1)} : end);
     assembly = {
         ...assembly,
         parts: assembly.parts.map((p) => (p.id === id ? resized : p)),
-        joints: assembly.joints.filter((j) => !(j.type === "contact" && [j.a, j.b].includes(id)))
+        joints: assembly.joints.filter((j) => !contacts.includes(j))
             .map((j) => (j.type === "pin" || j.type === "weld" || j.type === "ground" ? {...j, a: keep(j.a), ...(j.b && {b: keep(j.b)})} : j)),
     };
     assembly = recapture(assembly, state.poses, id);
-    const result = resolve(assembly, state);
-    return holds(result) ? mountContacts(result) : {error: "S to velikostjo se mehanizma ne da sestaviti."};
+    let result = resolve(assembly, state);
+    for (const contact of contacts) {
+        if (!holds(result)) break;
+        result = addContact(result, contact.a, contact.b);
+        if (result.error) return result;
+    }
+    return holds(result) ? result : {error: "S to velikostjo se mehanizma ne da sestaviti."};
 };
 
 export const updateJoint = (build, id, changes) => {
@@ -380,6 +357,10 @@ export const updateJoint = (build, id, changes) => {
     const result = resolve(assembly, build.state);
     return holds(result) ? result : {error: "Te spremembe se ne da sestaviti."};
 };
+
+//Takes a part off everything it is joined to; a bar keeps its motion axis
+export const detachPart = (build, id) => resolve({...build.assembly,
+    joints: build.assembly.joints.filter((j) => j.type === "axis" || !partJoints({joints: [j]}, id).length)}, build.state);
 
 export const removeJoint = (build, id) =>
     resolve({...build.assembly, joints: build.assembly.joints.filter((j) => j.id !== id)}, build.state);

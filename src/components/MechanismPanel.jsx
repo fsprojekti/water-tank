@@ -93,7 +93,9 @@ const Choice = ({options, value, disabled, onChange}) => (
 const AxisAngle = ({axis, disabled, onAxis}) => <NumberField label="Kot" unit="°" value={degrees(axis.angle)} min={-180}
     max={180} step={5} disabled={disabled} onChange={(v) => onAxis({angle: v * Math.PI / 180})}/>;
 
-const PartProperties = ({part, pose, assembly, disabled, onUpdate, onAxis, onBearing, onRemove, onSelect}) => {
+const PartProperties = ({part, pose, assembly, disabled, onUpdate, onAxis, onBearing, onRemove, onRemoveJoint, onDetach,
+                            onSelect}) => {
+    const joints = partJoints(assembly, part.id).filter((joint) => joint.type !== "axis");
     const parts = Object.fromEntries(assembly.parts.map((p) => [p.id, p]));
     const limits = (key) => partTypes[part.type].params[key].slice(1).map(cm);
     const axis = assembly.joints.find((j) => j.type === "axis" && j.bar === part.id);
@@ -119,11 +121,16 @@ const PartProperties = ({part, pose, assembly, disabled, onUpdate, onAxis, onBea
             <span>Os v ležaju</span>
         </label>}
         {part.type === "valve" && <small>Odpira se z zasukom v nasprotni smeri urinega kazalca (↺), za 90°.</small>}
-        {partJoints(assembly, part.id).filter((joint) => joint.type !== "axis").map((joint) => (
-            <button key={joint.id} type="button" className="build-joint" onClick={() => onSelect({kind: "joint", id: joint.id})}>
-                {describeJoint(joint, parts)}</button>
+        {joints.map((joint) => (
+            <span key={joint.id} className="build-joint">
+                <button type="button" onClick={() => onSelect({kind: "joint", id: joint.id})}>{describeJoint(joint, parts)}</button>
+                <button type="button" className="build-joint-remove" disabled={disabled} title="Odstrani ta spoj"
+                        aria-label={`Odstrani: ${describeJoint(joint, parts)}`} onClick={() => onRemoveJoint(joint.id)}>✕</button>
+            </span>
         ))}
-        {part.type !== "valve" && <Button size="sm" variant="outline-danger" disabled={disabled} onClick={onRemove}>Odstrani</Button>}
+        {joints.length > 1 && <Button size="sm" variant="outline-secondary" disabled={disabled} onClick={onDetach}
+                                      title="Odstrani vse spoje tega dela">Odklopi vse</Button>}
+        {part.type !== "valve" && <Button size="sm" variant="outline-danger" disabled={disabled} onClick={onRemove}>Odstrani del</Button>}
     </>;
 };
 
@@ -137,7 +144,7 @@ const JointProperties = ({joint, assembly, disabled, onUpdate, onAxis, onRemove}
             options={[["open", "Odprt"], ["crossed", "Prekrižan"]]} onChange={(v) => onUpdate({crossed: v === "crossed"})}/>}
         {joint.type === "contact" && <small>Kolo se brez zdrsa kotali po {parts[joint.b].type === "bar" ? "letvi" : "drugem kolesu"}.</small>}
         {joint.type === "axis" && <AxisAngle axis={joint} disabled={disabled} onAxis={onAxis}/>}
-        <Button size="sm" variant="outline-danger" disabled={disabled} onClick={onRemove}>Odstrani</Button>
+        <Button size="sm" variant="outline-danger" disabled={disabled} onClick={onRemove}>Odstrani spoj</Button>
     </>;
 };
 
@@ -146,7 +153,8 @@ const JointProperties = ({joint, assembly, disabled, onUpdate, onAxis, onRemove}
  * or joint with its parameters, and what the mechanism does: valve opening, Kp, closing level and problems.
  */
 const MechanismPanel = ({build, analysis, selected, locked, tool, message, onPick, onTool, onSelect,
-                            onUpdatePart, onAxis, onBearing, onRemovePart, onUpdateJoint, onRemoveJoint, onCloseValve, onExample, onClear}) => {
+                            onUpdatePart, onAxis, onBearing, onDetach, onRemovePart, onUpdateJoint, onRemoveJoint, onCloseValve, onExample, onClear,
+                            canUndo, canRedo, onUndo, onRedo}) => {
     const {assembly, state} = build;
     const part = selected?.kind === "part" && assembly.parts.find((p) => p.id === selected.id);
     const joint = selected?.kind === "joint" && assembly.joints.find((j) => j.id === selected.id);
@@ -176,6 +184,7 @@ const MechanismPanel = ({build, analysis, selected, locked, tool, message, onPic
                                         onUpdate={(changes) => onUpdatePart(part.id, changes)}
                                         onAxis={(change) => onAxis(part.id, change)}
                                         onBearing={(on) => onBearing(part.id, on)}
+                                        onRemoveJoint={onRemoveJoint} onDetach={() => onDetach(part.id)}
                                         onRemove={() => onRemovePart(part.id)} onSelect={onSelect}/>
                     : joint ? <JointProperties joint={joint} assembly={assembly} disabled={locked}
                                                onUpdate={(changes) => onUpdateJoint(joint.id, changes)}
@@ -194,6 +203,10 @@ const MechanismPanel = ({build, analysis, selected, locked, tool, message, onPic
                     ? <ul className="build-issues">{analysis.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
                     : <small className="build-ok">Mehanizem deluje kot P-regulator.</small>}
                 <div className="build-actions">
+                    <Button size="sm" variant="outline-secondary" disabled={locked || !canUndo} onClick={onUndo}
+                            title="Razveljavi zadnjo spremembo (Ctrl+Z)" aria-label="Razveljavi">↶</Button>
+                    <Button size="sm" variant="outline-secondary" disabled={locked || !canRedo} onClick={onRedo}
+                            title="Ponovi razveljavljeno spremembo (Ctrl+Y)" aria-label="Ponovi">↷</Button>
                     <Button size="sm" variant="outline-dark" disabled={locked} onClick={onCloseValve}
                             title="Zapre ventil in zategne jermenico: ventil se bo zaprl pri tem nivoju">Zapri ventil pri tem nivoju</Button>
                     <Button size="sm" variant="outline-secondary" disabled={locked} onClick={onExample}>Primer</Button>

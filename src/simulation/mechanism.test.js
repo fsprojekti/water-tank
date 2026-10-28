@@ -1,4 +1,4 @@
-import {addBearing, addBelt, addContact, addPart, closeValve, connect, emptyBuild, exampleBuild, moveWater, setAxis, updateJoint, updatePart} from "./assembly";
+import {addBearing, addBelt, addContact, addPart, closeValve, connect, detachPart, emptyBuild, exampleBuild, moveWater, setAxis, updateJoint, updatePart} from "./assembly";
 import {analyse, settle} from "./mechanism";
 import {createModel, modelReducer, RESET, RUN, SET_INPUT, SET_STATUS, TICK} from "./reducer";
 
@@ -75,6 +75,13 @@ test("a float on a lever works too, and its Kp follows the lever length", () => 
     expect(Math.abs(result.kp)).toBeCloseTo(0.08 / 0.06 / (0.6 * Math.cos(lever.a)) / (Math.PI / 2), 1);
 });
 
+test("a part comes off everything it is joined to, keeping a bar's motion axis", () => {
+    const build = detachPart(exampleBuild(0.75), "p2");
+    expect(build.assembly.joints.filter((j) => [j.a?.part, j.b?.part, j.a, j.b, j.bar].includes("p2")).map((j) => j.type))
+        .toEqual(["axis"]);
+    expect(analyse(build.assembly, build.state).issues.join(" ")).toMatch(/ne odziva/);
+});
+
 test("joints that can't be assembled are refused", () => {
     const build = exampleBuild(0.75);
     //The wheel axle is fixed; fixing it somewhere else would jam the mechanism
@@ -136,7 +143,9 @@ test("a bearing dropped near a wheel fixes its axle, so the wheel turns in place
     build = addPart(build, "bar", [2.2, 1.3]);
     build = connect(build, {part: "p2", point: "0"}, {part: "p1", point: "center"});
     build = addPart(build, "wheel", [2.2 + 0.0125 + 0.08, 1.3]);
-    expect(build.assembly.joints.some((j) => j.type === "contact")).toBe(true);
+    //Dropped against the bar it only touches; the contact tool makes it roll there
+    expect(build.assembly.joints.some((j) => j.type === "contact")).toBe(false);
+    build = addContact(build, "p3", "p2");
     expect(addBearing(build, [3.5, 1.6]).error).toBeDefined();
     build = addBearing(build, [2.3, 1.31]);
     expect(build.error).toBeUndefined();
@@ -147,4 +156,23 @@ test("a bearing dropped near a wheel fixes its axle, so the wheel turns in place
     //Rolled 10 cm along the bar: a tenth of a metre over the radius
     expect(lower.state.poses.p3.a - centre.a).toBeCloseTo(0.1 / 0.08, 3);
     expect(analyse(lower.assembly, lower.state).loose).toEqual([]);
+});
+
+test("a wheel stands still once the bar has slid past it, and rolls on when it comes back", () => {
+    //Short bar on the float, wheel in a bearing near its top end: below 0.70 m the bar's top drops past the wheel
+    let build = addPart(emptyBuild(0.75), "float", [2.2, 0.9]);
+    build = addPart(build, "bar", [2.2, 1.3]);
+    build = connect(build, {part: "p2", point: "0"}, {part: "p1", point: "center"});
+    build = addPart(build, "wheel", [2.2 + 0.0125 + 0.08, 1.42]);
+    build = addContact(build, "p3", "p2");
+    build = addBearing(build, [2.2925, 1.42]);
+    expect(build.error).toBeUndefined();
+    const angle = (level) => moveWater(build, level).state.poses.p3.a;
+    const top = 0.75 + 0.12 + 0.6 - 1.42;
+    expect(angle(0.6)).toBeCloseTo(angle(0.75 - top), 6);
+    expect(angle(0.4)).toBeCloseTo(angle(0.6), 6);
+    expect(Math.abs(angle(0.73) - build.state.poses.p3.a)).toBeGreaterThan(0.1);
+    //Down past the wheel and back up: the wheel ends where it started
+    const back = moveWater(moveWater(build, 0.5), 0.75);
+    expect(back.state.poses.p3.a).toBeCloseTo(build.state.poses.p3.a, 6);
 });

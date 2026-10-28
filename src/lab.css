@@ -40,10 +40,11 @@
 @media (min-width: 1200px) { .build-panel { height: 132px; overflow: hidden; } }
 .build-field { display: flex; align-items: center; gap: 4px; margin: 0; }
 .build-field input { width: 72px; }
-.build-joint {
-    border: 0; border-radius: 10px; padding: 1px 8px; background: #e9ecef; font-size: 12px; color: #343a40;
-}
-.build-joint:hover { background: #d0ebff; }
+.build-joint { display: inline-flex; border-radius: 10px; background: #e9ecef; font-size: 12px; overflow: hidden; }
+.build-joint button { border: 0; padding: 1px 8px; background: transparent; color: #343a40; }
+.build-joint button:hover:not(:disabled) { background: #d0ebff; }
+.build-joint .build-joint-remove { padding: 1px 7px; border-left: 1px solid #ced4da; color: #c92a2a; }
+.build-joint .build-joint-remove:hover:not(:disabled) { background: #ffe3e3; }
 .build-hint { color: #6c757d; }
 .build-message { color: #c92a2a; flex-basis: 100%; }
 .build-check { display: flex; flex-direction: column; gap: 4px; flex: 0 1 420px; }

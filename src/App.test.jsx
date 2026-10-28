@@ -111,3 +111,21 @@ test("runs the manual simulation and keeps state across pages", () => {
     fireEvent.click(screen.getByText("Manual control"));
     expect(screen.getByText(/^1\.0 \/ 120 s$/)).toBeInTheDocument();
 });
+
+test("mechanism changes can be undone and redone", () => {
+    window.location.hash = "/sestavi";
+    renderApp();
+    const check = () => screen.getByLabelText("Delovanje mehanizma");
+    expect(screen.getByRole("button", {name: "Razveljavi"})).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", {name: "Primer"}));
+    expect(check()).toHaveTextContent("Kp 3.98");
+    fireEvent.click(screen.getByRole("button", {name: "Razveljavi"}));
+    expect(check()).toHaveTextContent("Kp —");
+    expect(screen.getByRole("button", {name: "Razveljavi"})).toBeDisabled();
+    fireEvent.keyDown(window, {key: "y", ctrlKey: true});
+    expect(check()).toHaveTextContent("Kp 3.98");
+    fireEvent.keyDown(window, {key: "z", ctrlKey: true});
+    expect(check()).toHaveTextContent("Kp —");
+    fireEvent.click(screen.getByRole("button", {name: "Ponovi"}));
+    expect(check()).toHaveTextContent("Kp 3.98");
+});

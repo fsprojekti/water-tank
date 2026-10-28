@@ -73,8 +73,11 @@ controller over the tank from parts and runs it like the measuring pages (60 s, 
   fixes it where it is; a wheel's panel also has **Os v ležaju**. The **Stik** tool defines the surfaces that roll on
   each other: click a wheel, then a bar (its faces are highlighted) or another wheel's rim; the wheel's shaft moves
   across until they touch, with its frame mounts, so a wheel already fixed on the frame still rolls on the bar.
-  A wheel dropped against a bar or wheel is also mounted on touch. The **Jermen** tool joins two wheels, open or
-  crossed. Changes that can't be assembled (the parts would jam) are refused with a message.
+  When the bar slides past the wheel, the wheel no longer touches it and stands still; it rolls on when the bar
+  comes back. Parts dropped next to each other are not joined by themselves. The **Jermen** tool joins two wheels, open or
+  crossed. The selected part lists its joints, each with ✕ to remove it, and **Odklopi vse** takes it off all of
+  them. Every change can be undone and redone (↶ ↷, Ctrl+Z and Ctrl+Y or Ctrl+Shift+Z), up to 50 steps; moving the
+  water by hand is not a change. Changes that can't be assembled (the parts would jam) are refused with a message.
 - Everything works by friction without slipping, except the valve pulley, which slips at the valve stops: after the
   valve saturates, its closing level moves. **Zapri ventil pri tem nivoju** sets the closing level h0 to the current
   water level; the **Nivo vode** slider moves the water by hand to try the mechanism, and the run starts from there.
