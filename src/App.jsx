@@ -8,6 +8,7 @@ import MechanicalTuning from "./pages/MechanicalTuning";
 import MechanicalLoad from "./pages/MechanicalLoad";
 import MechanicalPi from "./pages/MechanicalPi";
 import LabPage from "./pages/LabPage";
+import BuildPage from "./pages/BuildPage";
 
 function App() {
     return (
@@ -15,6 +16,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<Navigate to="/vaja/6" replace/>}/>
                 <Route path="/vaja/:grade" element={<LabPage/>}/>
+                <Route path="/sestavi" element={<BuildPage/>}/>
                 <Route path="/" element={<Layout/>}>
                     <Route path="operator" element={<OperatorControl/>}/>
                     <Route path="tank" element={<TankModel/>}/>

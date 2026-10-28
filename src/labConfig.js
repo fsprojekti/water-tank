@@ -6,14 +6,16 @@ export const labTasks = [
             drainValve: true, randomDrain: true, supplyTarget: 0.5, metric: "supply"},
     },
     {
+        //Starts settled at the reference with the valve closed; opening the drain gives an unsaturated
+        //first-order response, so the time constant and steady-state error follow Kp.
         grade: 7, mode: "labP", title: "Odziv P-regulatorja", short: "Odziv P",
-        evaluation: {duration: 60, referenceLevel: 0.5, initialLevel: 0.2, consumers: false,
-            drainValve: true, controller: "mechanical", h0Initial: 0.65, metric: "iae", research: true},
+        evaluation: {duration: 60, referenceLevel: 0.75, initialLevel: 0.75, consumers: false,
+            drainValve: true, drains: ["low", "high"], controller: "mechanical", metric: "iae", research: true},
     },
     {
         grade: 8, mode: "labPLoad", title: "P-regulator pod obremenitvijo", short: "P · obremenitev",
         evaluation: {duration: 90, referenceLevel: 0.5, initialLevel: 0.5, consumers: false,
-            drainValve: true, controller: "mechanical", h0Initial: 0.65, metric: "iae", research: true},
+            drainValve: true, controller: "mechanical", metric: "iae", research: true},
     },
     {
         grade: 9, mode: "labI", title: "I-regulator", short: "Samo I",
@@ -27,6 +29,13 @@ export const labTasks = [
             pass: {iaeLimit: 1.5, meanTolerance: 0.01}},
     },
 ];
+
+//Workshop: the student builds the P controller from parts and tries it on the tank; not a graded task yet
+export const buildTask = {
+    mode: "labBuild", title: "Sestavi P-regulator", short: "Sestavi",
+    evaluation: {duration: 60, referenceLevel: 0.75, initialLevel: 0.75, consumers: false, drainValve: true,
+        drains: ["low", "medium", "high"], controller: "built", metric: "iae", research: true},
+};
 
 export const drainScenarios = [
     {id: "low", label: "Majhen · 12 %", opening: 12},

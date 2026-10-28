@@ -62,6 +62,34 @@ test("P responds faster with larger gain, and a larger drain leaves a larger off
     expect(light.error).toBeGreaterThan(0);
 });
 
+test("student P modes close the valve at the reference, so the offset shrinks with Kp", () => {
+    for (const mode of ["labP", "labPLoad"]) {
+        const model = createModel(mode);
+        expect(model.h0).toBe(model.referenceLevel);
+        expect(intakePosition({...model, level: model.referenceLevel - 0.1, kp: 3})).toBeCloseTo(30);
+    }
+    const offsets = [1, 2, 4, 8].map((kp) => labMeasurements(run({...createModel("labP"), kp})).error);
+    offsets.forEach((offset, i) => {
+        expect(offset).toBeGreaterThan(0);
+        if (i) expect(offset).toBeLessThan(offsets[i - 1]);
+    });
+});
+
+test("grade 7 measures the P time constant without valve saturation", () => {
+    const {area} = config.tank, {flowMax} = config.intake;
+    for (const scenario of ["low", "high"]) {
+        for (const kp of [1, 2, 5, 10]) {
+            const result = run({...createModel("labP"), kp, scenario});
+            const {steadyLevel, t63} = labMeasurements(result);
+            const drain = modelFlows({...result, level: steadyLevel}).drain;
+            //Linearised loop: A dh/dt = -(Qmax kp + dQdrain/dh) Δh
+            expect(t63).toBeCloseTo(area / (flowMax * kp + drain / (2 * steadyLevel)), 0);
+            expect(result.history.valve.every(([, v]) => v < 100)).toBe(true);
+        }
+    }
+    expect(createModel("labP").scenario).toBe("low");
+});
+
 test("the final PI exercise has attainable criteria and rejects a poor setting", () => {
     const good = run({...createModel("labPI"), kp: 8, ki: 0.5});
     const poor = run({...createModel("labPI"), kp: 1, ki: 0.05});

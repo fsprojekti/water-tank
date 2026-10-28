@@ -1,13 +1,13 @@
 import {createContext} from "react";
 import {createModel, LOAD, MANUAL, MECHANICAL, modelReducer, OPERATOR, PI, TANK, TUNING} from "../simulation/reducer";
-import {labTasks} from "../labConfig";
+import {buildTask, labTasks} from "../labConfig";
 
 export const SimulationContext = createContext(null);
 
 export const reducer = (state, action) => ({...state, [action.mode]: modelReducer(state[action.mode], action)});
 
 export const createState = () => ({
-    ...Object.fromEntries(labTasks.map(({mode}) => [mode, createModel(mode)])),
+    ...Object.fromEntries([...labTasks, buildTask].map(({mode}) => [mode, createModel(mode)])),
     [MANUAL]: createModel(MANUAL),
     [MECHANICAL]: createModel(MECHANICAL),
     [OPERATOR]: createModel(OPERATOR),

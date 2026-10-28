@@ -11,9 +11,9 @@ export const useTankModel = (mode) => {
 
     useEffect(() => {
         if (model.status !== RUN) return undefined;
-        const interval = setInterval(() => dispatch({mode, type: TICK}), config.simulation.step * 1000 / (model.speed ?? 1));
+        const interval = setInterval(() => dispatch({mode, type: TICK}), config.simulation.step * 1000);
         return () => clearInterval(interval);
-    }, [mode, model.status, model.speed, dispatch]);
+    }, [mode, model.status, dispatch]);
 
     //Reset draws a new consumer pattern unless the seed is fixed in config
     const setStatus = useCallback(

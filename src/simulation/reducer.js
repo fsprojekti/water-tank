@@ -4,6 +4,8 @@ import {proportionalIntakePosition} from "./controller";
 import {consumerStates, createDrainSchedule, createSchedule, drainOpeningAt, nextSeed} from "./schedule";
 import {drainScenarios, labSettings} from "../labConfig";
 import {labControl, nextIntegral} from "./labController";
+import {settle} from "./mechanism";
+import {loadBuild} from "./assembly";
 
 export const MANUAL = "manual";
 export const MECHANICAL = "mechanical";
@@ -40,6 +42,7 @@ export const supplyRatio = (model) => (model.supply.onSteps > 0 ? model.supply.o
 export const intakePosition = (model) => {
     const {controller} = config.evaluation[model.mode];
     if (controller === "integral" || controller === "parallelPI") return labControl(model, controller).command * 100;
+    if (controller === "built") return model.mechanism.opening * 100;
     return isMechanical(model.mode) ? proportionalIntakePosition(model.level, model.kp, model.h0) : model.inValvePos;
 };
 
@@ -111,12 +114,15 @@ const freshRun = (mode, seed, level, reference) => {
 export const createModel = (mode, seed = nextSeed()) => {
     const {referenceLevel, startAtReference = false, consumers = true} = config.evaluation[mode];
     const initialLevel = startAtReference ? referenceLevel : config.evaluation[mode].initialLevel ?? 0;
+    //Student P modes fix the carriage at the reference, so the valve opening is u = Kp·(reference − h)
+    const closingLevel = config.evaluation[mode].h0Initial ??
+        (config.evaluation[mode].lab ? referenceLevel : config.controller.h0Initial);
     return {
         mode,
         status: STOP,
         outValvePos: 0,
         ...(config.evaluation[mode].lab && {
-            scenario: "medium", speed: 1, kp: config.controller.kpInitial, ki: labSettings.kiInitial,
+            scenario: config.evaluation[mode].drains?.[0] ?? "medium", kp: config.controller.kpInitial, ki: labSettings.kiInitial,
         }),
         //A page without consumers keeps them all disabled
         consumersEnabled: config.consumers.list.map(() => consumers),
@@ -124,13 +130,16 @@ export const createModel = (mode, seed = nextSeed()) => {
         initialLevel,
         referenceLevel,
         ...(isMechanical(mode)
-            ? {kp: config.controller.kpInitial, h0: config.evaluation[mode].h0Initial ?? config.controller.h0Initial,
-                h0Start: config.evaluation[mode].h0Initial ?? config.controller.h0Initial}
+            ? {kp: config.controller.kpInitial, h0: closingLevel, h0Start: closingLevel}
             : {inValvePos: 0}),
         ...(config.evaluation[mode].integral && {turbineGain: config.evaluation[mode].turbine.gainInitial}),
+        //Student's mechanism, its state now and at the start of the run
+        ...(config.evaluation[mode].controller === "built" && builtMechanism(loadBuild(initialLevel))),
         ...freshRun(mode, seed, initialLevel, referenceLevel),
     };
 };
+
+const builtMechanism = ({assembly, state}) => ({assembly, mechanism: state, mechanismStart: state});
 
 const append = (series, time, value) => [...series, [time, value]];
 
@@ -155,6 +164,8 @@ const tick = (model) => {
     if (controller === "integral" || controller === "parallelPI") {
         next.integralOutput = nextIntegral(model, controller, level, dt);
     }
+    //The mechanism follows the float to the new level and sets the valve for the next step
+    if (controller === "built") next.mechanism = settle(model.assembly, model.mechanism, level);
     //Turbine turns while there is an error and moves the carriage: level too low raises h0
     if (config.evaluation[model.mode].integral) {
         const [min, max] = config.controller.h0Limits;
@@ -195,6 +206,7 @@ export const modelReducer = (model, action) => {
                     ...freshRun(model.mode, action.seed ?? model.seed, model.initialLevel, model.referenceLevel),
                     //The turbine moved the carriage; put it back where the student set it
                     ...(config.evaluation[model.mode].integral && {h0: model.h0Start}),
+                    ...(config.evaluation[model.mode].controller === "built" && {mechanism: model.mechanismStart}),
                     status: RESET,
                 };
             }
@@ -205,6 +217,8 @@ export const modelReducer = (model, action) => {
             if (config.evaluation[model.mode].lockSettings && model.step > 0 && lockedInputs.includes(action.name)) {
                 return model;
             }
+            //The mechanism is built and tried by hand before a run
+            if (action.name === "build") return model.step > 0 ? model : {...model, ...builtMechanism(action.value)};
             //Where the student sets the carriage is where a reset puts it back
             if (action.name === "h0") return {...model, h0: action.value, h0Start: action.value};
             //A new start level applies right away while the run has not started
@@ -213,6 +227,8 @@ export const modelReducer = (model, action) => {
                     ...model,
                     initialLevel: action.value,
                     ...freshRun(model.mode, model.seed, action.value, model.referenceLevel),
+                    ...(config.evaluation[model.mode].controller === "built" &&
+                        builtMechanism({assembly: model.assembly, state: settle(model.assembly, model.mechanism, action.value)})),
                 };
             }
             //A new reference applies before the run; pages starting at the reference start from the new one

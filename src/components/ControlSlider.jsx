@@ -1,6 +1,7 @@
 import RangeSlider from "react-bootstrap-range-slider";
 
-//Controlled slider panel used for valves and rod lengths; info is an optional second line (e.g. the flow)
+//Controlled slider panel used for valves and rod lengths; info is an optional second line (e.g. the flow).
+//Without top the panel stays in normal flow, so a parent can stack several panels.
 const ControlSlider = ({
                            top, left, width = 180, value, onChange, info,
                            label = "Position", unit = "%",
@@ -8,7 +9,7 @@ const ControlSlider = ({
                            disabled = false,
                        }) => (
     <div className={"d-flex flex-column"} style={{
-        position: "absolute",
+        position: top === undefined ? "relative" : "absolute",
         top,
         left,
         width,

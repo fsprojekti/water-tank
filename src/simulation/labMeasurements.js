@@ -18,7 +18,7 @@ export const labMeasurements = (model) => {
     const mean = meanLevel(tail);
     const range = Math.max(...tail.map(([, h]) => h)) - Math.min(...tail.map(([, h]) => h));
     const settled = enough && range <= 0.002;
-    const response = settled && config.evaluation[model.mode].controller === "mechanical"
+    const response = settled && ["mechanical", "built"].includes(config.evaluation[model.mode].controller)
         ? timeConstant(segment.map(([t, h]) => [t - segmentStart, h])) : null;
     const before = stepAt !== undefined && time >= stepAt
         ? model.history.level.filter(([t]) => t >= stepAt - 10 && t < stepAt) : [];

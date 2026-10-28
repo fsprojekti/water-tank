@@ -17,3 +17,40 @@
 .lab-finished { padding-left: 24px; font-size: 13px; color: #495057; }
 .lab-chart { width: 100%; }
 .lab-drive { position: absolute; top: 0; left: 0; pointer-events: none; }
+.lab-controller-panels { position: absolute; display: flex; flex-direction: column; justify-content: space-evenly; }
+/* Mechanism builder: palette, selected part or joint, and what the mechanism does */
+.build-panel {
+    display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 24px;
+    padding: 8px 16px; background: #fff; border-bottom: 1px solid #dee2e6; font-size: 14px; min-height: 132px;
+}
+.build-palette { display: flex; gap: 6px; }
+.build-card {
+    display: flex; flex-direction: column; align-items: center; width: 64px; padding: 2px 0 4px;
+    border: 1px solid #ced4da; border-radius: 6px; background: #f8f9fa; font-size: 12px;
+    cursor: grab; touch-action: none; user-select: none;
+}
+.build-card:hover:not(:disabled) { border-color: #495057; background: #e9ecef; }
+.build-card.active { border-color: #1c7ed6; background: #d0ebff; }
+.build-card:disabled { opacity: .45; cursor: default; }
+.build-properties {
+    display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 6px 12px; flex: 1 1 340px;
+    min-height: 40px; max-height: 116px; overflow-y: auto;
+}
+/* Fixed height on wide screens, so selecting a part never moves the scheme under the pointer */
+@media (min-width: 1200px) { .build-panel { height: 132px; overflow: hidden; } }
+.build-field { display: flex; align-items: center; gap: 4px; margin: 0; }
+.build-field input { width: 72px; }
+.build-joint {
+    border: 0; border-radius: 10px; padding: 1px 8px; background: #e9ecef; font-size: 12px; color: #343a40;
+}
+.build-joint:hover { background: #d0ebff; }
+.build-hint { color: #6c757d; }
+.build-message { color: #c92a2a; flex-basis: 100%; }
+.build-check { display: flex; flex-direction: column; gap: 4px; flex: 0 1 420px; }
+.build-values { display: flex; gap: 16px; font-variant-numeric: tabular-nums; }
+.build-issues { margin: 0; padding-left: 18px; color: #c92a2a; font-size: 13px; max-height: 60px; overflow-y: auto; }
+.build-ok { color: #2b8a3e; }
+.build-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mechanism-editor { touch-action: none; user-select: none; }
+.mechanism-point { cursor: crosshair; }
+.mechanism-point:hover { r: 7px; fill: #d0ebff; }

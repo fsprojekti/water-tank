@@ -1,10 +1,9 @@
-﻿
+
 > water-tank@0.1.0 analyze:lab
 > node scripts/analyze-lab.mjs
 
-13:20:48 [vite] (client) [optimizer] scanning dependencies...
 {
-  "runs": 137,
+  "runs": 121,
   "drainSchedule": [
     [
       0,

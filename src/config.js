@@ -1,4 +1,4 @@
-import {labTasks} from "./labConfig";
+import {buildTask, labTasks} from "./labConfig";
 
 const config = {
     tank: {
@@ -167,7 +167,7 @@ const config = {
         //Part of the scheme shown [Px]: the intake pipe comes in from the left edge
         viewPx: {left: 220, right: 1470},
         //Valve panels under the intake and drain valves [Px]
-        valvePanel: {leftPx: 226, widthPx: 180, intakeTopPx: 363},
+        valvePanel: {leftPx: 226, widthPx: 180, intakeTopPx: 300, heightPx: 90},
     },
     controller: {
         //Mechanical P controller: rack on the pontoon, pinion on a carriage, belt to the intake valve.
@@ -191,7 +191,7 @@ const config = {
     },
 };
 
-for (const task of labTasks) {
+for (const task of [...labTasks, buildTask]) {
     config.evaluation[task.mode] = {title: task.title, grade: task.grade, lab: true, lockSettings: true, ...task.evaluation};
 }
 

@@ -4,12 +4,12 @@ Interactive water tank level control simulation for the MKTP laboratory. Built w
 
 ## Student workbench
 
-The home page opens `#/vaja/6`: one Slovenian interface with five tabs and a shared tank model.
+The home page opens `#/vaja/6`: one Slovenian interface with five graded tabs, a mechanism builder and a shared tank model.
 
 | Tab | Mode |
 | --- | --- |
 | 6 | Manual regulation with one randomly opening drain, 120 seconds |
-| 7 | P response: adjustable Kp and closing level h0 under constant drain, 60 seconds |
+| 7 | P time constant and steady-state error: adjustable Kp, drain 12% or 36%, reference 0.75 m, 60 seconds |
 | 8 | P under load: three drains and a drain step at 30 seconds, 90 seconds |
 | 9 | Independent I-only controller with adjustable Ki, 90 seconds |
 | 10 | Parallel PI with the same randomly opening drain, 120 seconds |
@@ -17,11 +17,21 @@ The home page opens `#/vaja/6`: one Slovenian interface with five tabs and a sha
 The page contains the plant diagram, controls, plots and live measurements. Assignments, explanations,
 assessment instructions and student reporting are separate Moodle material; they are not part of this app.
 
-Research runs support 1×, 2× and 4× speed without changing the numerical time step. Controller settings and
-drain scenarios are locked until **Nov poskus**. Leaving a tab pauses its simulation; the model remains in memory.
-Live runs reset on a page reload. There is no notebook, submission flow or automatic grade in the interface.
+Runs are in real time (1×). Controller settings and the drain are locked until **Nov poskus**. Where a task allows
+only fixed drain openings (grade 7: 12% and 36%), the drain valve slider snaps to them; grades 8–9 choose the
+drain scenario in the toolbar.
 
-Runtime modes and drain scenarios are in `src/labConfig.js`. I and PI use normalized valve opening:
+The chart follows the pointer with dashed vertical and horizontal lines and time and value read-outs on the axes. The mouse wheel zooms time, Shift+wheel zooms
+the value axis under the pointer, dragging pans, and the slider below selects a time window. The toolbar zooms to a
+drawn rectangle, steps back, fits everything (also on double-click) and saves the chart as an image.
+The line tool draws straight lines on the level chart, e.g. tangents for the time constant: the first click sets the
+point (snapped to the level curve when close to it), the line then rotates with the pointer, and a second click fixes
+it. Escape cancels; the clear button removes all lines. Lines stay through a new run, so runs can be compared.
+
+Leaving a tab pauses its simulation; the model remains in memory. Live runs reset on a page reload. There is no notebook, submission flow or automatic grade in the interface.
+
+Runtime modes and drain scenarios are in `src/labConfig.js`. Grades 7–8 use the mechanical P controller `u = clamp(Kp*(reference - h), 0, 1)`:
+the carriage is fixed with the closing level at the reference, so only Kp is adjustable. I and PI use normalized valve opening:
 `u = clamp(Kp*e + I, 0, 1)`, `dI/dt = Ki*e`, with conditional integration at actuator limits.
 I-only omits P entirely. Kp is in 1/m and Ki in 1/(m·s), independently adjustable; initial I is 0.34.
 Both use the mechanical pilot valve, hydraulic turbine and open-belt drive. In I-only mode the turbine
@@ -32,7 +42,7 @@ and screw pitch are in `labMechanics`; pulley ratios and rotations follow the co
 The earlier mechanical PI demonstration is retained on its original route and uses its original parametrization.
 
 All five student modes draw the same single drain valve; the five consumers remain only in the original demos.
-Grades 7–9 retain 12%, 24% and 36% constant openings. Grades 8–9 also offer a 12→36% step at 30 s
+Grade 7 offers the 12% and 36% openings; grades 8–9 retain 12%, 24% and 36% constant openings. Grades 8–9 also offer a 12→36% step at 30 s
 and the random scenario. Grades 6 and 10 use the random scenario automatically. It starts at 24% for 12 s,
 then selects a different opening from 12/18/24/30/36% every 8–14 s. There are no changes in the final 30 s,
 so the final-window error can be measured after a sustained load. `labDrain` configures this pattern;
@@ -45,9 +55,41 @@ The 63% response time is measured toward the observed settled level, from the la
 An unsettled response shows a dash; the final-window mean error and oscillation range remain available.
 For random loads the measurement segment restarts at each valve change.
 
+### Mechanism builder
+
+The **Sestavi regulator** tab (`#/sestavi`) is a workshop, not a graded task yet: the student builds the level
+controller over the tank from parts and runs it like the measuring pages (60 s, reference 0.75 m, drain 12/24/36%).
+
+- Parts are dragged from the palette onto the scheme (a click drops one above the tank): float (width), smooth bar
+  (length, angle), wheel (radius; a friction wheel or a pulley). The intake valve is always there with its own pulley
+  (radius) and opens a quarter turn counterclockwise. There is no separate guide part.
+- A bar has a motion axis (on by default): its own line, fixed to the frame and drawn as a thin dashed line, so the
+  bar only slides along itself, without turning. Selecting the bar
+  highlights the line; dragging it moves the bar across, the round handle past the bar's end turns the bar with its
+  axis in 5° steps. The axis can be
+  switched off in the panel (e.g. for a lever on a pivot).
+- Joints are made by dragging a point (○) onto another point for a pin (toggle to a rigid joint in the panel; two
+  axles share a shaft). A **Ležaj** (bearing, drawn as a triangle on a hatched base) dropped on a wheel axle or a point
+  fixes it where it is; a wheel's panel also has **Os v ležaju**. The **Stik** tool defines the surfaces that roll on
+  each other: click a wheel, then a bar (its faces are highlighted) or another wheel's rim; the wheel's shaft moves
+  across until they touch, with its frame mounts, so a wheel already fixed on the frame still rolls on the bar.
+  A wheel dropped against a bar or wheel is also mounted on touch. The **Jermen** tool joins two wheels, open or
+  crossed. Changes that can't be assembled (the parts would jam) are refused with a message.
+- Everything works by friction without slipping, except the valve pulley, which slips at the valve stops: after the
+  valve saturates, its closing level moves. **Zapri ventil pri tem nivoju** sets the closing level h0 to the current
+  water level; the **Nivo vode** slider moves the water by hand to try the mechanism, and the run starts from there.
+- The panel shows the valve opening, Kp (the closing slope of the opening against level at h0) and h0, measured by
+  moving the water through the whole tank, and lists what keeps the mechanism from working: missing float or joints,
+  parts free to move, positive feedback, a wheel running off its bar, a jam or a float
+  hanging on the mechanism.
+- `src/simulation/mechanism.js` solves the poses every step from the water level (Levenberg-Marquardt on the joint
+  equations, rolling without slip `Δu = r·Δφ`, belts `r₁φ₁ = ±r₂φ₂`, axes keep the bar's angle and an anchor on the line); `src/simulation/assembly.js` holds the editing
+  operations and **Primer**, a ready mechanism equal to the measuring pages: Kp = 2·r_pulley / (π·r_wheel·r_valve).
+  The mechanism is kept in the browser's local storage; guides saved by the first version are dropped on loading.
+
 ## Calibration for the exercise author
 
-Run `npm run analyze:lab` to reproduce 137 complete runs of the application's actual reducer. The resulting
+Run `npm run analyze:lab` to reproduce 121 complete runs of the application's actual reducer. The resulting
 `analysis/lab-sweep.csv` contains P, I and PI sweeps and two manual-operation benchmarks. These are calibration
 results for the exercise author, not student instructions or answers displayed in the app.
 
@@ -59,7 +101,8 @@ Suggested exploration:
 
 | Mode | Parameter choices | What the simulation supports |
 | --- | --- | --- |
-| P, grades 7–8 | Kp = 1, 2, 4, 8; h0 around 0.50–0.70 m; drain 12/24/36% | Compare response and load-dependent offset. At Kp = 4, h0 ≈ 0.585 m balances the 24% drain at h = 0.5 m; 12% and 36% require ≈ 0.542 and 0.627 m respectively. A fixed h0 cannot balance all three loads at the target. |
+| P, grade 7 | Kp = 1…10; drain 12% and 36% | The tank starts settled at the 0.75 m reference with the valve closed; the drain opens at the start. The valve never exceeds 60%, so the 63% time follows the linearised τ = A/(Qmax·Kp + dQdrain/dh) within 0.3 s. 12%: t63 = 8.7/4.7/3.2/2.4/1.9/1.6/1.4/1.2/1.1/1.0 s, error = 0.181/0.097/0.066/0.050/0.040/0.034/0.029/0.026/0.023/0.020 m. 36%: t63 = 6.5/4.0/2.9/2.2/1.8/1.6/1.3/1.2/1.1/1.0 s, error = 0.416/0.254/0.181/0.141/0.115/0.097/0.084/0.074/0.066/0.060 m. At high Kp both rows approach A/(Qmax·Kp) = 10/Kp s. |
+| P, grade 8 | Kp = 2, 4, 8; drain 12/24/36% and the step | Reference 0.5 m. At Kp = 4 the 12/24/36% drains leave 0.041/0.078/0.112 m; the offset roughly halves when Kp doubles. |
 | I, grade 9 | Ki = 0.1, 0.5, 1; initially use the 24% drain | Starting at 0.35 m, peaks are 0.592/0.619/0.627 m and target crossings are 3/6/9 over 90 s. The last-10-s level ranges are 0.022/0.027/0.065 m: none is settled. Use this to compare oscillations; do not require a quiet response from I alone. |
 | PI, grade 10 | Explore Kp = 4–8, Ki = 0.3–1; reference pair 6 and 0.5 | All sampled combinations Kp = 4/5/6/8 and Ki = 0.3/0.5/1 meet the existing numerical criteria on this pattern. This is a useful search region, not a unique optimum. |
 

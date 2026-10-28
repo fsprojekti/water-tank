@@ -39,10 +39,8 @@ try {
         rows.push(row);
         return row;
     };
-    for (const scenario of ["low", "medium", "high"]) {
-        for (const kp of [1, 2, 4, 8]) {
-            for (const h0 of [0.5, 0.6, 0.65]) simulate("labP", {scenario, kp, h0});
-        }
+    for (const scenario of ["low", "high"]) {
+        for (let kp = 1; kp <= 10; kp++) simulate("labP", {scenario, kp});
     }
     for (const scenario of ["low", "medium", "high", "step", "random"]) {
         for (const ki of [0.05, 0.1, 0.2, 0.5, 1, 2, 3]) simulate("labI", {scenario, ki});

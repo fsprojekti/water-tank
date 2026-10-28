@@ -53,12 +53,18 @@ const CountdownOverlay = ({count}) => (
     }}>{count}</div>
 );
 
+//Allowed value closest to a slider position
+const nearest = (values, value) => values.reduce((best, v) => (Math.abs(v - value) < Math.abs(best - value) ? v : best));
+
 /**
  * Parts shared by all pages: run control bar, tank, intake and drain valves, consumers, displays and chart.
  * The intake valve is set by the student unless intakeAuto (mechanical controller); page specific parts go in children.
+ * drainControl {values, disabled, onChange} lets a lab task set the drain to the allowed openings only.
+ * valvePulley {radius [Px], angle [rad]} replaces the fixed controller pulley on the intake valve.
  * Run starts after a short countdown, so the student has time to get to the valve.
  */
-const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, children, toolbar, chart, hideTitle = false}) => {
+const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, drainControl, valvePulley, children, toolbar,
+                       chart, hideTitle = false}) => {
     const {
         duration, referenceLabel = "Reference", showReference = true, metric, drainValve = true, consumers = true, lab,
     } = config.evaluation[model.mode];
@@ -105,7 +111,9 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                               x2={config.intake.valveXPx} y2={valvePanel.intakeTopPx} stroke="black" strokeWidth={2}/>
                         <BallValve x={config.intake.valveXPx} y={config.intake.valveYPx} width={config.intake.pipeWidthPx}
                                    open={flows.inValvePos / 100} horizontal reverse={intakeAuto}
-                                   pulleyRadius={intakeAuto ? config.controller.valveDrive.drivenRadiusM * config.render.m2Px : undefined}/>
+                                   pulleyRadius={valvePulley?.radius ??
+                                       (intakeAuto ? config.controller.valveDrive.drivenRadiusM * config.render.m2Px : undefined)}
+                                   pulleyAngle={valvePulley?.angle}/>
                     </svg>
                     <ControlSlider top={valvePanel.intakeTopPx} left={valvePanel.leftPx} width={valvePanel.widthPx}
                                    label={lab ? "Dovod" : "Position"}
@@ -125,10 +133,13 @@ const TankPlant = ({model, flows, setStatus, setInput, intakeAuto = false, child
                     {drainValve && (
                         <>
                             <ControlSlider top={config.outlets.valveYPx - 45} left={valvePanel.leftPx}
-                                           width={valvePanel.widthPx} value={flows.outValvePos} disabled={Boolean(lab)}
+                                           width={valvePanel.widthPx} value={flows.outValvePos}
+                                           disabled={drainControl ? drainControl.disabled || countdown.count !== null : Boolean(lab)}
                                            label={lab ? "Odtok" : "Position"}
                                            info={<FlowInfo flow={flows.drain}/>}
-                                           onChange={(value) => setInput("outValvePos", value)}/>
+                                           onChange={(value) => drainControl
+                                               ? drainControl.onChange(nearest(drainControl.values, value))
+                                               : setInput("outValvePos", value)}/>
                         </>
                     )}
                     {countdown.count !== null && <CountdownOverlay count={countdown.count}/>}

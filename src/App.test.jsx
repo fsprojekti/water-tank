@@ -5,7 +5,7 @@ import SimulationProvider from "./context/SimulationProvider";
 //jsdom has no canvas: stub echarts and the 2D context
 vi.mock("echarts/core", () => ({
     use: vi.fn(),
-    init: () => ({setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn()}),
+    init: () => ({setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(), dispatchAction: vi.fn(), getZr: () => ({on: vi.fn()})}),
 }));
 
 beforeAll(() => {
@@ -16,16 +16,22 @@ test("workbench tabs keep simulation settings and show independent I and PI cont
     window.location.hash = "/vaja/7";
     renderApp();
     const tabs = () => within(screen.getByRole("navigation", {name: "Načini regulacije"}));
-    expect(tabs().getAllByRole("link")).toHaveLength(5);
+    expect(tabs().getAllByRole("link")).toHaveLength(6);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByText("Postopek poskusa")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", {name: /zapisnik|Shrani meritev/})).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole("slider", {name: "Kp"}), {target: {value: "4"}});
-    fireEvent.change(screen.getByRole("combobox", {name: "Hitrost simulacije"}), {target: {value: "4"}});
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    //The drain slider snaps to the openings the task allows (12 % and 36 %)
+    fireEvent.change(screen.getByRole("slider", {name: "Odtok"}), {target: {value: "30"}});
+    expect(screen.getByRole("slider", {name: "Odtok"})).toHaveValue("36");
+    fireEvent.change(screen.getByRole("slider", {name: "Odtok"}), {target: {value: "20"}});
+    expect(screen.getByRole("slider", {name: "Odtok"})).toHaveValue("12");
     fireEvent.click(screen.getByRole("button", {name: "Začni poskus"}));
     for (let i = 0; i < 3; i++) act(() => vi.advanceTimersByTime(1000));
     expect(screen.getByRole("slider", {name: "Kp"})).toBeDisabled();
-    act(() => vi.advanceTimersByTime(15000));
+    expect(screen.getByRole("slider", {name: "Odtok"})).toBeDisabled();
+    act(() => vi.advanceTimersByTime(60000));
     expect(screen.getByRole("status", {name: "Rezultat poskusa"})).toHaveTextContent("Poskus je končan");
 
     fireEvent.click(tabs().getByRole("link", {name: /Ocena 9/}));
