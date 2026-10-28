@@ -112,6 +112,20 @@ export const addPart = (build, type, [x, y]) => {
 };
 
 /**
+ * Stepped pulley dropped at a position [m]: a large and a small wheel on one shaft, so a belt or a contact on either
+ * rim gives a different ratio. The small one is added last and lies on top, where a click picks it.
+ */
+export const addDoubleWheel = (build, at, [large, small] = [0.1, 0.05]) => {
+    let result = addPart(build, "wheel", at);
+    const outer = result.assembly.parts.at(-1).id;
+    result = updatePart(result, outer, {radius: large});
+    result = addPart(result, "wheel", at);
+    const inner = result.assembly.parts.at(-1).id;
+    result = updatePart(result, inner, {radius: small});
+    return connect(result, {part: inner, point: "axle"}, {part: outer, point: "axle"});
+};
+
+/**
  * Part held by the student at a pose; joints and the water win where they disagree. A bar takes its motion axis
  * along sideways, and the sleeve stays where it holds the bar.
  */
@@ -192,6 +206,7 @@ export const connect = (build, source, target) => {
     if (joint.type === "weld") {
         const locked = capture({id, ...joint}, result.assembly, result.state.poses);
         result = resolve({...result.assembly, joints: result.assembly.joints.map((j) => (j.id === id ? locked : j))}, result.state);
+        result = {...result, assembly: stackShaft(result.assembly, source.part)};
     }
     return holds(result) ? result : {error: "Tako se mehanizma ne da sestaviti: deli bi se zagozdili."};
 };
@@ -248,6 +263,22 @@ const shaft = (assembly, id) => {
         }
     }
     return [...group];
+};
+
+//Wheels on the shaft of a wheel from the back to the front, in the order they are drawn
+export const shaftWheels = (assembly, id) => {
+    const group = shaft(assembly, id);
+    return assembly.parts.filter((part) => part.type === "wheel" && group.includes(part.id)).map((part) => part.id);
+};
+
+//Wheels on one shaft are stacked largest at the back, so the smaller ones in front stay visible
+const stackShaft = (assembly, id) => {
+    const group = shaftWheels(assembly, id);
+    const slots = group.map((wheel) => assembly.parts.findIndex((part) => part.id === wheel));
+    const sorted = slots.map((slot) => assembly.parts[slot]).sort((a, b) => b.radius - a.radius);
+    const stacked = [...assembly.parts];
+    slots.forEach((slot, i) => { stacked[slot] = sorted[i]; });
+    return {...assembly, parts: stacked};
 };
 
 /**
@@ -363,6 +394,13 @@ export const updatePart = (build, id, changes) => {
         const placed = {...state, poses: {...state.poses, [id]: pose}};
         const turned = free(build, id) ? resolve(assembly, placed) : resolve(assembly, placed, {drag: {id, pose}});
         return holds(turned) ? turned : {error: "Tako se dela ne da zasukati."};
+    }
+    if (part.type === "wheel" && changes.radius !== undefined) {
+        const group = shaftWheels(assembly, id), i = group.indexOf(id);
+        const radius = (other) => assembly.parts.find((p) => p.id === other).radius;
+        if ((i > 0 && changes.radius > radius(group[i - 1])) || (i < group.length - 1 && changes.radius < radius(group[i + 1]))) {
+            return {error: "Sprednje kolo na gredi ne more biti večje od zadnjega."};
+        }
     }
     const resized = {...part, ...changes};
     const contacts = assembly.joints.filter((j) => j.type === "contact" && [j.a, j.b].includes(id));

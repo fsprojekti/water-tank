@@ -1,8 +1,8 @@
 import {
-    addBearing, addBelt, addContact, addPart, closeValve, connect, contactCandidate, detachPart, dragPart, emptyBuild, exampleBuild,
-    moveWater, releasePart, setAxis, updateJoint, updatePart,
+    addBearing, addBelt, addContact, addDoubleWheel, addPart, closeValve, connect, contactCandidate, detachPart, dragPart, emptyBuild,
+    exampleBuild, moveWater, releasePart, setAxis, shaftWheels, updateJoint, updatePart,
 } from "./assembly";
-import {analyse, settle} from "./mechanism";
+import {analyse, barWidth, floatHeight, settle} from "./mechanism";
 import {createModel, modelReducer, RESET, RUN, SET_INPUT, SET_STATUS, TICK} from "./reducer";
 
 const kpOf = ({wheel = 0.1, pulley = 0.05, valve = 0.08} = {}) => 2 * pulley / (Math.PI * wheel * valve);
@@ -200,4 +200,71 @@ test("dragging a part next to a wheel offers a contact, and releasing sets them 
     //A wheel in a bearing is dragged with its bearing
     const moved = dragPart(build, "p3", {...build.state.poses.p3, x: 2.6});
     expect(moved.assembly.joints.find((j) => j.type === "ground").at[0]).toBeCloseTo(2.6, 9);
+});
+
+test("a double wheel is a stepped pulley: contact on the large rim, belt on the small one", () => {
+    const x = 2.17, level = 0.75, axle = [x + barWidth / 2 + 0.15, 1.35];
+    const steps = [
+        (b) => addPart(b, "float", [x, level + floatHeight / 2]),
+        (b) => addPart(b, "bar", [x, level + floatHeight + 0.6]),
+        (b) => updatePart(b, "p2", {length: 1.3}),
+        (b) => connect(b, {part: "p2", point: "0"}, {part: "p1", point: "center"}),
+        (b) => addDoubleWheel(b, axle),
+        (b) => connect(b, {part: "p3", point: "axle"}, {ground: axle}),
+        (b) => addContact(b, "p3", "p2"),
+        (b) => updatePart(b, "valve", {radius: 0.08}),
+        (b) => addBelt(b, "p4", "valve"),
+        closeValve,
+    ];
+    const build = steps.reduce((b, step) => {
+        const next = step(b);
+        if (next.error) throw new Error(next.error);
+        return next;
+    }, emptyBuild(level));
+    const [outer, inner] = [build.state.poses.p3, build.state.poses.p4];
+    expect(Math.hypot(outer.x - inner.x, outer.y - inner.y)).toBeLessThan(1e-6);
+    const result = analyse(build.assembly, build.state);
+    expect(result.issues).toEqual([]);
+    expect(result.kp).toBeCloseTo(kpOf(), 2);
+});
+
+test("a dragged double wheel keeps both wheels on its shaft", () => {
+    const build = addDoubleWheel(emptyBuild(0.5), [2.5, 1.4]);
+    const moved = releasePart(dragPart(build, "p2", {...build.state.poses.p2, x: 2.7, y: 1.2}), "p2");
+    const [outer, inner] = [moved.state.poses.p1, moved.state.poses.p2];
+    expect(inner.x).toBeCloseTo(2.7, 2);
+    expect(inner.y).toBeCloseTo(1.2, 2);
+    expect(Math.hypot(outer.x - inner.x, outer.y - inner.y)).toBeLessThan(1e-6);
+});
+
+test("on a double wheel the front wheel can't be larger than the back one", () => {
+    const build = addDoubleWheel(emptyBuild(0.5), [2.5, 1.4]);
+    expect(shaftWheels(build.assembly, "p2")).toEqual(["p1", "p2"]);
+    expect(updatePart(build, "p2", {radius: 0.12}).error).toMatch(/Sprednje kolo/);
+    expect(updatePart(build, "p1", {radius: 0.04}).error).toMatch(/Sprednje kolo/);
+    expect(updatePart(build, "p2", {radius: 0.1}).error).toBeUndefined();
+});
+
+test("wheels joined on a shaft are stacked with the larger one at the back", () => {
+    let build = addPart(emptyBuild(0.5), "wheel", [2.5, 1.4]);
+    build = updatePart(build, "p1", {radius: 0.04});
+    build = addPart(build, "wheel", [2.8, 1.4]);
+    build = updatePart(build, "p2", {radius: 0.12});
+    build = connect(build, {part: "p2", point: "axle"}, {part: "p1", point: "axle"});
+    expect(shaftWheels(build.assembly, "p1")).toEqual(["p2", "p1"]);
+});
+
+test("a belt moved to the other wheel of a double wheel changes the ratio", () => {
+    let build = addDoubleWheel(emptyBuild(0.5), [2.5, 1.4]);
+    build = connect(build, {part: "p1", point: "axle"}, {ground: [2.5, 1.4]});
+    build = addBelt(build, "p2", "valve");
+    const belt = build.assembly.joints.find((j) => j.type === "belt");
+    const turn = (b) => {
+        const before = b.state.poses.valve.a;
+        const turned = updatePart(b, "p1", {angle: b.state.poses.p1.a + 0.1});
+        return turned.state.poses.valve.a - before;
+    };
+    const small = turn(build);
+    const large = turn(updateJoint(build, belt.id, {a: "p1"}));
+    expect(large / small).toBeCloseTo(2, 1);
 });

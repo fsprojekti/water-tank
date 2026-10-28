@@ -292,15 +292,17 @@ const MechanismEditor = ({build, analysis, editable, selected, onSelect, tool, o
                     <PartShape part={part} pose={state.poses[part.id]} outline={outline(part.id)}/>
                 </g>
             ))}
-            {assembly.joints.filter((joint) => joint.type === "belt").map((joint) => (
-                <g key={joint.id} onPointerDown={(event) => selectJoint(event, joint)} style={{cursor: editable ? "pointer" : undefined}}>
-                    <Belt joint={joint} parts={parts} poses={state.poses} selected={jointSelected(joint)}/>
-                </g>
-            ))}
             {sorted.filter(isWheel).map((part) => (
                 <g key={part.id} onPointerDown={(event) => pressPart(event, part)}
                    style={{cursor: editable ? (tool ? "copy" : "grab") : undefined}}>
                     <PartShape part={part} pose={state.poses[part.id]} outline={outline(part.id)}/>
+                </g>
+            ))}
+            {/*Belts in front of all parts; with a tool on, clicks go through them to the wheels*/}
+            {assembly.joints.filter((joint) => joint.type === "belt").map((joint) => (
+                <g key={joint.id} onPointerDown={(event) => selectJoint(event, joint)}
+                   style={{cursor: editable ? "pointer" : undefined, pointerEvents: tool ? "none" : undefined}}>
+                    <Belt joint={joint} parts={parts} poses={state.poses} selected={jointSelected(joint)}/>
                 </g>
             ))}
             {assembly.joints.map((joint) => {

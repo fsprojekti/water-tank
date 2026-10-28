@@ -7,7 +7,7 @@ import {isFinished, modelFlows, RESET, RUN, STOP} from "../simulation/reducer";
 import {labMeasurements} from "../simulation/labMeasurements";
 import {analyse, fromPx, isWheel} from "../simulation/mechanism";
 import {
-    addBearing, addBelt, addPart, closeValve, connect, detachPart, emptyBuild, moveWater, exampleBuild, removeBearing, removeJoint,
+    addBearing, addBelt, addDoubleWheel, addPart, closeValve, connect, detachPart, emptyBuild, moveWater, exampleBuild, removeBearing, removeJoint,
     removePart, saveBuild, setAxis, updateJoint, updatePart,
 } from "../simulation/assembly";
 import ControlSlider from "../components/ControlSlider";
@@ -111,7 +111,8 @@ const BuildSession = () => {
             //A bearing fixes the point it is dropped on; other parts are new
             if (type === "bearing" && at) latest.current.apply(addBearing(current, spot));
             else if (type !== "bearing" && spot) {
-                latest.current.apply(addPart(current, type, spot), (result) => ({kind: "part", id: result.assembly.parts.at(-1).id}));
+                latest.current.apply(type === "double" ? addDoubleWheel(current, spot) : addPart(current, type, spot),
+                    (result) => ({kind: "part", id: result.assembly.parts.at(-1).id}));
             }
         };
         window.addEventListener("pointermove", move);

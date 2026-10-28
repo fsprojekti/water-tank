@@ -3,6 +3,7 @@ import {Button} from "react-bootstrap";
 import colors from "./pipeColors";
 import {GroundSymbol} from "./MechanismEditor";
 import {partJoints, partTypes, pointLabel} from "../simulation/mechanism";
+import {shaftWheels} from "../simulation/assembly";
 
 //Palette entries: parts dragged onto the scheme
 const palette = [
@@ -13,6 +14,10 @@ const palette = [
     {type: "wheel", label: "Kolo", hint: "Torno kolo ali jermenica",
         icon: <g><circle cx={20} cy={20} r={15} fill={colors.steel} stroke={colors.belt} strokeWidth={3}/>
             <circle cx={20} cy={20} r={3} fill={colors.metal}/></g>},
+    {type: "double", label: "Dvojno kolo", hint: "Veliko in malo kolo na isti gredi: jermen ali stik na enem ali drugem da prestavo",
+        icon: <g><circle cx={20} cy={20} r={16} fill={colors.steel} stroke={colors.belt} strokeWidth={3}/>
+            <circle cx={20} cy={20} r={8} fill={colors.steel} stroke={colors.belt} strokeWidth={3}/>
+            <circle cx={20} cy={20} r={2.5} fill={colors.metal}/></g>},
     {type: "bearing", label: "Ležaj", hint: "Spusti na os kolesa ali točko: pritrdi jo na fiksno mesto",
         icon: <g transform="translate(20 8) scale(0.85)"><GroundSymbol x={0} y={0}/></g>},
 ];
@@ -87,19 +92,29 @@ const Choice = ({options, value, disabled, onChange}) => (
 const AxisAngle = ({axis, disabled, onAxis}) => <NumberField label="Kot" unit="°" value={degrees(axis.angle)} min={-180}
     max={180} step={5} disabled={disabled} onChange={(v) => onAxis({angle: v * Math.PI / 180})}/>;
 
-const PartProperties = ({part, pose, assembly, disabled, onUpdate, onAxis, onBearing, onRemove, onRemoveJoint, onDetach,
-                            onSelect}) => {
+//Wheels on one shaft from the back to the front: "zadaj", "spredaj", or their names when there are more
+const shaftLabels = (group, parts) => (group.length === 2 ? ["zadaj", "spredaj"] : group.map((id) => parts[id].name));
+
+const PartProperties = ({part, pose, assembly, disabled, onUpdate, onUpdatePart, onAxis, onBearing, onRemove, onRemoveJoint,
+                            onDetach, onSelect}) => {
     const joints = partJoints(assembly, part.id).filter((joint) => joint.type !== "axis");
     const parts = Object.fromEntries(assembly.parts.map((p) => [p.id, p]));
     const limits = (key) => partTypes[part.type].params[key].slice(1).map(cm);
     const axis = assembly.joints.find((j) => j.type === "axis" && j.bar === part.id);
+    //A wheel on a shaft with others shows all their radii; one in front can't be larger than the one behind it
+    const shaft = part.type === "wheel" ? shaftWheels(assembly, part.id) : [part.id];
+    const labels = shaftLabels(shaft, parts);
     return <>
         <b>{part.name}</b>
+        {shaft.length > 1 && shaft.map((id, i) => <NumberField key={id} label={`Polmer ${labels[i]}`} unit="cm"
+            value={cm(parts[id].radius)} min={i < shaft.length - 1 ? cm(parts[shaft[i + 1]].radius) : limits("radius")[0]}
+            max={i > 0 ? cm(parts[shaft[i - 1]].radius) : limits("radius")[1]} step={0.5} disabled={disabled}
+            onChange={(v) => onUpdatePart(id, {radius: v / 100})}/>)}
         {part.type === "float" && <NumberField label="Širina" unit="cm" value={cm(part.width)} min={limits("width")[0]}
             max={limits("width")[1]} disabled={disabled} onChange={(v) => onUpdate({width: v / 100})}/>}
         {part.type === "bar" && <NumberField label="Dolžina" unit="cm" value={cm(part.length)} min={limits("length")[0]}
             max={limits("length")[1]} disabled={disabled} onChange={(v) => onUpdate({length: v / 100})}/>}
-        {(part.type === "wheel" || part.type === "valve") && <NumberField label={part.type === "valve" ? "Polmer jermenice" : "Polmer"}
+        {(part.type === "valve" || (part.type === "wheel" && shaft.length === 1)) && <NumberField label={part.type === "valve" ? "Polmer jermenice" : "Polmer"}
             unit="cm" value={cm(part.radius)} min={limits("radius")[0]} max={limits("radius")[1]} step={0.5}
             disabled={disabled} onChange={(v) => onUpdate({radius: v / 100})}/>}
         {part.type === "bar" && <NumberField label="Kot" unit="°" value={degrees(pose.a)}
@@ -136,6 +151,15 @@ const JointProperties = ({joint, assembly, disabled, onUpdate, onAxis, onRemove}
             options={[["pin", "Zglob (vrtljivo)"], ["weld", "Tog spoj"]]} onChange={(type) => onUpdate({type})}/>}
         {joint.type === "belt" && <Choice value={joint.crossed ? "crossed" : "open"} disabled={disabled}
             options={[["open", "Odprt"], ["crossed", "Prekrižan"]]} onChange={(v) => onUpdate({crossed: v === "crossed"})}/>}
+        {/*A belt end on a stepped pulley moves to another of its wheels, for another ratio*/}
+        {joint.type === "belt" && ["a", "b"].map((end) => {
+            const shaft = parts[joint[end]].type === "wheel" ? shaftWheels(assembly, joint[end]) : [];
+            if (shaft.length < 2) return null;
+            const labels = shaftLabels(shaft, parts);
+            return <span key={end} className="build-field"><span>Na kolesu</span>
+                <Choice value={joint[end]} disabled={disabled} options={shaft.map((id, i) => [id, labels[i]])}
+                        onChange={(id) => onUpdate({[end]: id})}/></span>;
+        })}
         {joint.type === "contact" && <small>Kolo se brez zdrsa kotali po {parts[joint.b].type === "bar" ? "letvi" : "drugem kolesu"}.</small>}
         {joint.type === "axis" && <AxisAngle axis={joint} disabled={disabled} onAxis={onAxis}/>}
         <Button size="sm" variant="outline-danger" disabled={disabled} onClick={onRemove}>Odstrani spoj</Button>
@@ -176,7 +200,7 @@ const MechanismPanel = ({build, analysis, selected, locked, tool, message, onPic
             </div>
             <div className="build-properties">
                 {part ? <PartProperties part={part} pose={state.poses[part.id]} assembly={assembly} disabled={locked}
-                                        onUpdate={(changes) => onUpdatePart(part.id, changes)}
+                                        onUpdate={(changes) => onUpdatePart(part.id, changes)} onUpdatePart={onUpdatePart}
                                         onAxis={(change) => onAxis(part.id, change)}
                                         onBearing={(on) => onBearing(part.id, on)}
                                         onRemoveJoint={onRemoveJoint} onDetach={() => onDetach(part.id)}
